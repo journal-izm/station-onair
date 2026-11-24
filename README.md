@@ -58,6 +58,15 @@ uvicorn app.main:app --port 8102 --env-file .env.k   # K 방송국 (nec-server �
 | AI 기사 초안(LLM + RAG)·송고·승인 | 방송국 API 키 발급 |
 | 실시간 개표 웹, 20분 송출 화면, TTS |  |
 
+### 후보 설정 (RAG 자료 원문)
+| 기호 | 후보 (정당) | 콘셉트 · 슬로건 | 이력 | 공약 | 색 |
+|---|---|---|---|---|---|
+| 1 | 윤별하 (은하공화연합) | 은하 함대 조종사 · “흩어진 별들을 하나의 항로로” | 은하 함대 정찰기 조종사 출신 / 소행성대 구조 작전 지휘 / 우주정거장 '은하1호' 사령관 / 은하공화연합 대표 | 구와 구를 5분 안에 잇는 '초공간 셔틀' 노선 / 구마다 함대식 재난 구조대 / 청소년 조종사 학교 설립 | #FF2BD6 |
+| 2 | 류해온 (심해행성연맹) | 바다 행성의 수호자 · “가장 깊은 바다에서 온 약속” | 바다 행성 '아쿠아리스' 출신 / 심해 도시 방어막 설계 기술자 / 해저 잠수 함대 '해온호' 함장 / 심해행성연맹 대표 | 바닷속 쓰레기 수거 로봇 함대 / 해저 연구 도시 유치로 일자리 / 모든 행성 어린이 바다교실 무료 | #00E5FF |
+| 3 | 오로라 (무소속) | 사막 행성의 외계 통역사 · “모든 종족의 목소리에 답하겠습니다” | 사막 행성의 외계 언어 통역사 / 정체불명 신호 '로라 신호' 해독 / 보조 로봇 '피코'와 우주 교역소 운영 / 첫 출마 | 외계 주민도 쓰는 '만능 번역 민원 창구' / 로봇이 24시간 답하는 구청 민원 / 우주 교역 시장 개설 | #A6FF00 |
+
+> 후보·정당·지역은 모두 가상입니다. 우주 SF 분위기로 만들었지만 실존 영화·작품의 인물·행성 이름, 대사, 로고, 음악은 쓰지 않습니다. 색은 네온색이라 어두운 배경(방송 화면·차트)에서 쓰고, 흰 배경 글자에는 진한색을 씁니다.
+
 ### 20분 방송 구성
 <p align="center"><img src="docs/img/cuesheet.png" alt="20분 큐시트" width="100%"></p>
 <p align="center"><sub>20분 큐시트</sub></p>
@@ -580,8 +589,8 @@ OBS가 캡처해 방송하는 화면. 영상·AI 앵커·지역 차트·자막�
 
 | 컬럼 | 타입 | 키 | NULL | 설명 |
 |---|---|---|---|---|
-| `region_code` | VARCHAR(10) | PK | N | ALL / EAST … |
-| `name` | VARCHAR(20) |  | N | 전체 / 동구 |
+| `region_code` | VARCHAR(10) | PK | N | ALL / STAR … |
+| `name` | VARCHAR(20) |  | N | 전체 / 별빛구 |
 | `electors` | INTEGER |  | N | 선거인 수 |
 | `sort_order` | INTEGER |  | N | 표시 순서 |
 
@@ -897,7 +906,7 @@ OBS가 캡처해 방송하는 화면. 영상·AI 앵커·지역 차트·자막�
 응답 200
 ```json
 { "state": "OK", "last_seq": 42, "last_at": "20:31:05", "fail_count": 0,
-  "recent_events": [ {"type":"LEAD_CHANGE","region":"EAST"} ] }
+  "recent_events": [ {"type":"LEAD_CHANGE","region":"STAR"} ] }
 ```
 #### API-03-02 `POST /api/sync/run` — 즉시 수신
 권한: DESK · 테이블 TBL-03-05, TBL-03-03
@@ -928,8 +937,8 @@ status = DRAFT | REJECTED | SUBMITTED | APPROVED (생략 시 전체)
 ```
 응답 200
 ```json
-[ { "article_id": 12, "title": "동구 개표율 50% 돌파…", "status": "DRAFT",
-    "event_type": "RATE_MILESTONE", "region": "EAST", "created_at": "20:31:08" } ]
+[ { "article_id": 12, "title": "별빛구 개표율 50% 돌파…", "status": "DRAFT",
+    "event_type": "RATE_MILESTONE", "region": "STAR", "created_at": "20:31:08" } ]
 ```
 #### API-04-02 `GET /api/articles/{articleId}` — 기사 상세
 권한: REPORTER·DESK · 테이블 TBL-04-01, TBL-03-04, TBL-05-01
@@ -1041,19 +1050,19 @@ event: article.rejected  data: {"article_id":9, "comment":"..."}
 응답 200
 ```json
 { "counted_rate": 48.2, "updated_at": "20:31:05",
-  "candidates": [ {"id":1,"name":"김하늘","votes":120345,"rate":44.1,"rank":1,"winner_flag":null} ],
-  "regions": [ {"code":"EAST","leader_id":1,"counted_rate":51.3} ] }
+  "candidates": [ {"id":1,"name":"윤별하","votes":120345,"rate":44.1,"rank":1,"winner_flag":null} ],
+  "regions": [ {"code":"STAR","leader_id":1,"counted_rate":51.3} ] }
 ```
 #### API-06-02 `GET /api/public/results/{regionCode}` — 지역별 결과
 권한: 없음(공개) · 테이블 TBL-03-02, TBL-03-03
 
 요청
 ```json
-regionCode = EAST | WEST | … | ALL
+regionCode = STAR | DEEP | DUNE | NEBULA | ORBIT | ALL
 ```
 응답 200
 ```json
-{ "region": "동구", "counted_rate": 51.3,
+{ "region": "별빛구", "counted_rate": 51.3,
   "candidates": [ {"id":1,"votes":15210,"rate":46.4}, ... ] }
 ```
 #### API-06-03 `GET /api/public/articles?region={code}&limit=20` — 출고 기사 목록
@@ -1065,7 +1074,7 @@ region 생략 시 전체
 ```
 응답 200
 ```json
-[ { "article_id": 12, "title": "...", "body": "...", "region": "EAST", "approved_at": "20:32:40" } ]
+[ { "article_id": 12, "title": "...", "body": "...", "region": "STAR", "approved_at": "20:32:40" } ]
 ```
 #### API-06-04 `GET /api/public/stream` — 실시간 알림 (SSE)
 권한: 없음(공개) · 테이블 TBL-03-03, TBL-04-01
@@ -1077,7 +1086,7 @@ EventSource 연결 유지
 응답 200
 ```json
 event: results.updated   data: {"last_seq":43}
-event: article.published data: {"article_id":12, "region":"EAST"}
+event: article.published data: {"article_id":12, "region":"STAR"}
 ```
 
 </details>
@@ -1110,7 +1119,7 @@ event: article.published data: {"article_id":12, "region":"EAST"}
 응답 200
 ```json
 { "kind": "TTS", "queue_id": 7, "audio": "/static/tts/12.mp3",
-  "script": "...", "region_code": "EAST", "duration_sec": 24.5 }
+  "script": "...", "region_code": "STAR", "duration_sec": 24.5 }
 또는 { "kind": "AVATAR", "queue_id": 9, "video": "/static/avatar/15.mp4", "region_code": "ALL" }
 또는 { "kind": "VIDEO", "cue_id": 7, "file": "/static/media/interview_1.mp4" }
 ```
