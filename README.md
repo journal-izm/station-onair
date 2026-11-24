@@ -14,7 +14,7 @@
 | 연결 저장소 | [nec-server](https://github.com/journal-izm/nec-server) |
 | 전체 설계 | [election-onair](https://github.com/journal-izm/election-onair) |
 | 설계 문서 폴더 | [Google Drive](https://drive.google.com/drive/folders/1nlaKXMnq60aUp-fv0_Upej-j6IBgHbLX) |
-| 규모 | 요구 26 · 기능 22 · 화면 10 · API 22 · 테이블 15 |
+| 규모 | 요구 27 · 기능 23 · 화면 10 · API 22 · 테이블 16 |
 
 ## 🤝 API 계약 (두 저장소를 잇는 약속)
 
@@ -75,7 +75,7 @@ uvicorn app.main:app --port 8102 --env-file .env.k   # K 방송국 (nec-server �
 </details>
 
 <details>
-<summary><b>02 · 요구사항정의서 — 요구 26개와 추적표</b></summary>
+<summary><b>02 · 요구사항정의서 — 요구 27개와 추적표</b></summary>
 
 📄 원본: [Google Docs](https://docs.google.com/document/d/1sFmb71wlfMpqxI_mKG-STgbYMIWIgmCB3wKnPhhu5qI/edit) · [Word 파일](docs/02_요구사항정의서_station-onair.docx)
 
@@ -124,11 +124,12 @@ uvicorn app.main:app --port 8102 --env-file .env.k   # K 방송국 (nec-server �
 | REQ-07-03 | 지역 차트 B-roll | 기사를 읽는 동안 그 기사의 지역 차트가 화면에 나온다. | 필수 | FN-07-04 |
 | REQ-07-04 | 당선 영상 자동 편성 | 당선 확정 기사가 나가면 당선자의 인터뷰·이력·공약 영상을 이어서 편성한다. | 필수 | FN-07-05 |
 | REQ-07-05 | 송출 제어 | 데스크는 송출 시작·일시정지·다음 항목 건너뛰기를 할 수 있다. | 필수 | FN-07-06 |
+| REQ-07-06 | 립싱크 아바타 | 오프닝·마무리 멘트와 당선 유력·확실·확정 기사는 립싱크 아바타 영상으로 낭독한다. 영상이 90초 안에 준비되지 않으면 앵커 영상 + TTS로 먼저 읽는다. | 필수 | FN-07-07 |
 
 ### 비기능 요구사항
 | 요구 ID | 구분 | 요구사항명 | 내용 | 관련 기능 |
 |---|---|---|---|---|
-| NFR-01 | 성능 | 출고 지연 시간 | 승인 후 웹 표시 3초 이내, 방송 대기열 등록(TTS 생성 포함) 15초 이내. | FN-05-02 |
+| NFR-01 | 성능 | 출고 지연 시간 | 승인 후 웹 표시 3초 이내, 방송 대기열 등록(TTS 생성 포함) 15초 이내. 아바타 대상 기사는 90초 이내(넘으면 TTS로 대체). | FN-05-02 FN-07-07 |
 | NFR-02 | 보안 | 비밀 정보 보호 | 비밀번호는 해시로 저장, API 키·OpenAI 키는 .env에 두고 Git에 올리지 않는다. | FN-01-01 |
 | NFR-03 | 윤리 | 사람 검수 원칙 | AI가 만든 기사는 기자·데스크 두 사람의 확인 없이 웹·방송에 나가지 않는다. | FN-04-05 FN-05-02 |
 | NFR-05 | 화면 | 화면 규격 | 송출 화면 1920×1080, 실시간 개표 웹은 모바일에서도 읽힌다. | FN-06-01 FN-07-03 |
@@ -158,7 +159,8 @@ uvicorn app.main:app --port 8102 --env-file .env.k   # K 방송국 (nec-server �
 | REQ-07-03 | FN-07-04 | SCR-07-01 | API-06-02 | TBL-03-03 |
 | REQ-07-04 | FN-07-05 | SCR-07-01, SCR-07-02 | API-07-02 | TBL-03-04, TBL-07-01, TBL-07-03 |
 | REQ-07-05 | FN-07-06 | SCR-07-02 | API-07-04, API-07-05 | TBL-07-05 |
-| NFR-01 | FN-05-02 | SCR-05-02 | API-05-02 | TBL-04-01, TBL-05-01, TBL-07-02, TBL-07-04 |
+| REQ-07-06 | FN-07-07 | SCR-07-01, SCR-07-02 | API-07-02 | TBL-07-02, TBL-07-04, TBL-07-06 |
+| NFR-01 | FN-05-02 FN-07-07 | SCR-05-02, SCR-07-01, SCR-07-02 | API-05-02, API-07-02 | TBL-04-01, TBL-05-01, TBL-07-02, TBL-07-04, TBL-07-06 |
 | NFR-02 | FN-01-01 | SCR-01-01 | API-01-01 | TBL-01-01 |
 | NFR-03 | FN-04-05 FN-05-02 | SCR-04-02, SCR-05-02 | API-04-04, API-05-02 | TBL-04-01, TBL-05-01, TBL-07-02, TBL-07-04 |
 | NFR-05 | FN-06-01 FN-07-03 | SCR-06-01, SCR-07-01 | API-06-01, API-07-02, API-07-03, API-07-05 | TBL-03-01, TBL-03-03, TBL-07-01, TBL-07-02 |
@@ -167,7 +169,7 @@ uvicorn app.main:app --port 8102 --env-file .env.k   # K 방송국 (nec-server �
 </details>
 
 <details>
-<summary><b>03 · 기능정의서 — 기능 22개·상태·업무 규칙</b></summary>
+<summary><b>03 · 기능정의서 — 기능 23개·상태·업무 규칙</b></summary>
 
 📄 원본: [Google Docs](https://docs.google.com/document/d/1WD54zhHx0ECbjprSiQlPDPDKJqiHfE9Q-3fSY3vcFIU/edit) · [Word 파일](docs/03_기능정의서_station-onair.docx)
 
@@ -218,6 +220,7 @@ uvicorn app.main:app --port 8102 --env-file .env.k   # K 방송국 (nec-server �
 | FN-07-03 | 방송 대기열 송출 | 송출 화면이 다음 항목(영상/TTS)을 받아 재생 후 완료 보고. 같은 지역·유형의 더 새로운 기사가 승인되면 옛 기사는 건너뜀(SKIPPED) | REQ-07-01 REQ-07-02 NFR-05 | SCR-07-01 | API-07-02 API-07-03 API-07-05 | TBL-07-01 TBL-07-02 |
 | FN-07-04 | 지역 차트 B-roll | 낭독 중인 기사의 지역 차트를 화면에 표시 | REQ-07-03 | SCR-07-01 | API-06-02 | TBL-03-03 |
 | FN-07-05 | 당선 영상 자동 편성 | 당선 확정 기사 송출 뒤 당선자 인터뷰·이력·공약 영상 연결 | REQ-07-04 | SCR-07-01 SCR-07-02 | API-07-02 | TBL-07-01 TBL-07-03 TBL-03-04 |
+| FN-07-07 | 립싱크 아바타 생성 | 당선 관련 기사의 방송 원고로 아바타 영상을 요청하고, 90초 안에 준비되면 아바타로, 아니면 TTS로 송출 | REQ-07-06 NFR-01 | SCR-07-01 SCR-07-02 | API-07-02 | TBL-07-06 TBL-07-02 TBL-07-04 |
 | FN-07-06 | 송출 제어 | 시작·일시정지·재개·건너뛰기, 현재 상태 표시 | REQ-07-05 | SCR-07-02 | API-07-04 API-07-05 | TBL-07-05 |
 
 ### 기사 상태
@@ -246,6 +249,7 @@ uvicorn app.main:app --port 8102 --env-file .env.k   # K 방송국 (nec-server �
 | BR-08 | TTS 재생성 | TTS 실패, 또는 음성 길이가 예상(글자 수 ÷ 6초)의 70% 미만이면 1회 다시 생성. 또 실패하면 SKIPPED + 데스크 경고 (웹 게시는 그대로). | FN-07-02 |
 | BR-09 | 빈 대기열 | LIVE 구간에 읽을 기사가 없으면 전체 현황 차트 + 배경음악을 보여 준다 (승인 안 된 문장은 읽지 않음). | FN-07-03 |
 | BR-10 | 당선 지연 대비 | 방송 16:30까지 당선 확정 기사가 나가지 않으면 데스크가 7·8번(인터뷰·이력)을 건너뛰고 LIVE를 이어 간다. | FN-07-05, FN-07-06 |
+| BR-11 | 아바타 대기 한도 | 아바타 대상 기사(당선 유력·확실·확정)는 승인 후 아바타 영상을 요청하고, 90초 안에 READY가 아니면 TIMEOUT 처리 후 TTS로 낭독한다. | FN-07-07 |
 
 
 </details>
@@ -458,9 +462,9 @@ AI 초안을 사실 확인하며 고친 뒤 데스크로 송고
 
 OBS가 캡처해 방송하는 화면. 영상·AI 앵커·지역 차트·자막을 자동 재생
 
-- 관련 기능: FN-07-03, FN-07-04, FN-07-05
+- 관련 기능: FN-07-03, FN-07-04, FN-07-05, FN-07-07
 - 사용 API: API-06-02, API-07-02, API-07-03, API-07-05
-- 사용 테이블: TBL-03-03, TBL-03-04, TBL-07-01, TBL-07-02, TBL-07-03
+- 사용 테이블: TBL-03-03, TBL-03-04, TBL-07-01, TBL-07-02, TBL-07-03, TBL-07-04, TBL-07-06
 
 <p align="center"><img src="docs/img/SCR-07-01.png" alt="SCR-07-01 방송 송출 화면 (1920×1080)" width="100%"></p>
 <p align="center"><sub>SCR-07-01 방송 송출 화면 (1920×1080)</sub></p>
@@ -482,9 +486,9 @@ OBS가 캡처해 방송하는 화면. 영상·AI 앵커·지역 차트·자막�
 
 20분 구성표 진행과 방송 대기열을 보고 송출을 제어
 
-- 관련 기능: FN-07-01, FN-07-05, FN-07-06
+- 관련 기능: FN-07-01, FN-07-05, FN-07-07, FN-07-06
 - 사용 API: API-07-01, API-07-02, API-07-04, API-07-05
-- 사용 테이블: TBL-03-04, TBL-07-01, TBL-07-03, TBL-07-05
+- 사용 테이블: TBL-03-04, TBL-07-01, TBL-07-02, TBL-07-03, TBL-07-04, TBL-07-05, TBL-07-06
 
 <p align="center"><img src="docs/img/SCR-07-02.png" alt="SCR-07-02 큐시트·송출 제어" width="100%"></p>
 <p align="center"><sub>SCR-07-02 큐시트·송출 제어</sub></p>
@@ -504,7 +508,7 @@ OBS가 캡처해 방송하는 화면. 영상·AI 앵커·지역 차트·자막�
 </details>
 
 <details>
-<summary><b>05 · DB설계서 — 테이블 15개</b></summary>
+<summary><b>05 · DB설계서 — 테이블 16개</b></summary>
 
 📄 원본: [Google Docs](https://docs.google.com/document/d/12Vidx7d936NgqQTf9hUYQh4u8-WvrEvUDXIg6u7LYhk/edit) · [Word 파일](docs/05_DB설계서_station-onair.docx)
 
@@ -536,10 +540,11 @@ OBS가 캡처해 방송하는 화면. 영상·AI 앵커·지역 차트·자막�
 | TBL-04-03 | `candidate_doc` | 후보 이력·공약 자료 (RAG 원문) | FN-04-01 |
 | TBL-05-01 | `article_review` | 데스크 승인·반려 이력 | FN-05-02 FN-05-03 |
 | TBL-07-01 | `cue_sheet` | 20분 방송 구성표 | FN-07-01 FN-07-03 FN-07-05 |
-| TBL-07-02 | `onair_queue` | 방송 대기열 (승인 기사 낭독 순서) | FN-05-02 FN-07-03 |
+| TBL-07-02 | `onair_queue` | 방송 대기열 (승인 기사 낭독 순서) | FN-05-02 FN-07-03 FN-07-07 |
 | TBL-07-03 | `media_asset` | 사전 제작 영상·음성 (오프닝 TTS 포함) | FN-07-01 FN-07-05 |
-| TBL-07-04 | `tts_audio` | 기사 방송 원고 TTS 음성 | FN-05-02 FN-07-02 |
+| TBL-07-04 | `tts_audio` | 기사 방송 원고 TTS 음성 | FN-05-02 FN-07-02 FN-07-07 |
 | TBL-07-05 | `onair_state` | 송출 상태 (1행) | FN-07-06 |
+| TBL-07-06 | `avatar_video` | 립싱크 아바타 영상 (당선 관련 기사) | FN-07-07 |
 
 <details>
 <summary><b>TBL-01-01 <code>users</code> — 기자·데스크 계정 (5개 고정)</b></summary>
@@ -726,6 +731,7 @@ OBS가 캡처해 방송하는 화면. 영상·AI 앵커·지역 차트·자막�
 | `queue_id` | INTEGER | PK | N | 번호 |
 | `article_id` | INTEGER | FK,UK | N | → article |
 | `tts_id` | INTEGER | FK | Y | → tts_audio (생성 전 NULL) |
+| `avatar_id` | INTEGER | FK | Y | → avatar_video (아바타 대상만) |
 | `region_code` | VARCHAR(10) | FK | N | B-roll 지역 |
 | `priority` | INTEGER |  | N | 1=당선 관련, 5=일반 |
 | `status` | VARCHAR(10) |  | N | PREPARING / WAITING / PLAYING / DONE / SKIPPED |
@@ -741,7 +747,7 @@ OBS가 캡처해 방송하는 화면. 영상·AI 앵커·지역 차트·자막�
 | 컬럼 | 타입 | 키 | NULL | 설명 |
 |---|---|---|---|---|
 | `media_id` | INTEGER | PK | N | 번호 |
-| `media_type` | VARCHAR(10) |  | N | COUNTDOWN/OPENING/INTRO/INTERVIEW/PROFILE/CLOSING/ANCHOR_LOOP |
+| `media_type` | VARCHAR(10) |  | N | COUNTDOWN/OPENING/INTRO/INTERVIEW/PROFILE/CLOSING/ANCHOR_LOOP (OPENING·CLOSING은 립싱크 아바타) |
 | `candidate_id` | INTEGER | FK | Y | → candidate (후보별 영상) |
 | `title` | VARCHAR(50) |  | N | 영상 제목 |
 | `file_path` | VARCHAR(200) |  | N | /static/media/…mp4 · mp3 |
@@ -775,6 +781,24 @@ OBS가 캡처해 방송하는 화면. 영상·AI 앵커·지역 차트·자막�
 | `current_cue_id` | INTEGER | FK | Y | → cue_sheet |
 | `current_queue_id` | INTEGER | FK | Y | → onair_queue |
 | `started_at` | DATETIME |  | Y | 방송 시작 시각 |
+
+
+</details>
+
+<details>
+<summary><b>TBL-07-06 <code>avatar_video</code> — 립싱크 아바타 영상 (당선 관련 기사)</b></summary>
+
+| 컬럼 | 타입 | 키 | NULL | 설명 |
+|---|---|---|---|---|
+| `avatar_id` | INTEGER | PK | N | 번호 |
+| `article_id` | INTEGER | FK | N | → article |
+| `provider` | VARCHAR(20) |  | N | HEYGEN / RUNWAY 등 |
+| `job_id` | VARCHAR(100) |  | Y | 외부 서비스 작업 번호 |
+| `status` | VARCHAR(10) |  | N | REQUESTED / READY / FAILED / TIMEOUT |
+| `file_path` | VARCHAR(200) |  | Y | /static/avatar/….mp4 |
+| `duration_sec` | DECIMAL(5,1) |  | Y | 재생 길이 |
+| `requested_at` | DATETIME |  | N | 요청 시각 |
+| `ready_at` | DATETIME |  | Y | 준비 시각 |
 
 
 </details>
@@ -1077,7 +1101,7 @@ event: article.published data: {"article_id":12, "region":"EAST"}
     "duration_sec": 60, "status": "DONE" }, ... ]
 ```
 #### API-07-02 `GET /api/onair/next` — 다음 송출 항목
-권한: DESK(송출 PC 로그인) · 테이블 TBL-07-01, TBL-07-02, TBL-07-03, TBL-07-04
+권한: DESK(송출 PC 로그인) · 테이블 TBL-07-01, TBL-07-02, TBL-07-03, TBL-07-04, TBL-07-06
 
 요청
 ```json
@@ -1087,6 +1111,7 @@ event: article.published data: {"article_id":12, "region":"EAST"}
 ```json
 { "kind": "TTS", "queue_id": 7, "audio": "/static/tts/12.mp3",
   "script": "...", "region_code": "EAST", "duration_sec": 24.5 }
+또는 { "kind": "AVATAR", "queue_id": 9, "video": "/static/avatar/15.mp4", "region_code": "ALL" }
 또는 { "kind": "VIDEO", "cue_id": 7, "file": "/static/media/interview_1.mp4" }
 ```
 #### API-07-03 `POST /api/onair/queue/{queueId}/done` — 송출 완료 보고
@@ -1176,6 +1201,14 @@ event: cue.changed    data: {"cue_id":7}
 
 <p align="center"><img src="docs/img/station-onair_folder.png" alt="폴더 구조" width="100%"></p>
 <p align="center"><sub>폴더 구조</sub></p>
+
+### 결정 사항 (11/24)
+| 항목 | 결정 |
+|---|---|
+| DB | SQLite |
+| 실행 장소 | 강의장 LAN(본방송) + 클라우드(시연, DEMO_MODE) |
+| OpenAI 키 | 팀 공용 키 1개 |
+| AI 앵커 | 립싱크 아바타 섞어 쓰기 — 오프닝·마무리·당선 기사는 아바타, 나머지는 앵커 영상+TTS, 90초 초과 시 TTS |
 
 ### 저장소 규칙
 - `.env`, `*.db`는 올리지 않고 `.env.example`만 올린다
