@@ -6,6 +6,7 @@
 
 <p align="center"><img src="docs/img/station-onair_context.png" alt="전체 시스템에서 이 저장소의 위치" width="100%"></p>
 <p align="center"><sub>전체 시스템에서 이 저장소의 위치</sub></p>
+
 | 항목 | 내용 |
 |---|---|
 | 포트 | 8101 (M) · 8102 (K) |
@@ -41,6 +42,7 @@ uvicorn app.main:app --port 8102 --env-file .env.k   # K 방송국 (nec-server �
 
 <p align="center"><img src="docs/img/station-onair_numbering.png" alt="이 저장소의 번호 범위" width="100%"></p>
 <p align="center"><sub>이 저장소의 번호 범위</sub></p>
+
 ## 📚 설계 문서 8종
 
 <details>
@@ -59,6 +61,7 @@ uvicorn app.main:app --port 8102 --env-file .env.k   # K 방송국 (nec-server �
 ### 20분 방송 구성
 <p align="center"><img src="docs/img/cuesheet.png" alt="20분 큐시트" width="100%"></p>
 <p align="center"><sub>20분 큐시트</sub></p>
+
 ### 지켜야 할 원칙
 - **사람 검수**: 기자 송고 + 데스크 승인 없이 웹·방송에 나가지 않는다 (NFR-03)
 - **근거 표시**: 기사를 만든 이벤트·개표 수치를 함께 보여 준다
@@ -67,6 +70,7 @@ uvicorn app.main:app --port 8102 --env-file .env.k   # K 방송국 (nec-server �
 ### 일정
 <p align="center"><img src="docs/img/schedule.png" alt="P1 일정" width="100%"></p>
 <p align="center"><sub>P1 일정</sub></p>
+
 
 </details>
 
@@ -169,6 +173,7 @@ uvicorn app.main:app --port 8102 --env-file .env.k   # K 방송국 (nec-server �
 
 <p align="center"><img src="docs/img/station-onair_func_tree.png" alt="기능 구조도" width="100%"></p>
 <p align="center"><sub>기능 구조도</sub></p>
+
 ### 영역 01 · 계정·인증
 | 기능 ID | 기능명 | 설명 | 요구 | 화면 | API | 테이블 |
 |---|---|---|---|---|---|---|
@@ -218,6 +223,7 @@ uvicorn app.main:app --port 8102 --env-file .env.k   # K 방송국 (nec-server �
 ### 기사 상태
 <p align="center"><img src="docs/img/article_state.png" alt="기사 상태 전이" width="100%"></p>
 <p align="center"><sub>기사 상태 전이</sub></p>
+
 ### 개표 이벤트
 | 이벤트 | 뜻 | 조건 | 우선순위 |
 |---|---|---|---|
@@ -264,6 +270,7 @@ uvicorn app.main:app --port 8102 --env-file .env.k   # K 방송국 (nec-server �
 
 <p align="center"><img src="docs/img/screen_flow.png" alt="화면 흐름도" width="100%"></p>
 <p align="center"><sub>화면 흐름도</sub></p>
+
 <details>
 <summary><b>SCR-01-01 로그인 <sub>(기자·데스크)</sub></b></summary>
 
@@ -275,6 +282,7 @@ uvicorn app.main:app --port 8102 --env-file .env.k   # K 방송국 (nec-server �
 
 <p align="center"><img src="docs/img/SCR-01-01.png" alt="SCR-01-01 로그인" width="100%"></p>
 <p align="center"><sub>SCR-01-01 로그인</sub></p>
+
 | 번호 | 요소 | 설명 |
 |---|---|---|
 | 1 | 아이디 | reporter1~3, desk1~2 |
@@ -296,6 +304,7 @@ uvicorn app.main:app --port 8102 --env-file .env.k   # K 방송국 (nec-server �
 
 <p align="center"><img src="docs/img/SCR-03-01.png" alt="SCR-03-01 개표 수신 모니터" width="100%"></p>
 <p align="center"><sub>SCR-03-01 개표 수신 모니터</sub></p>
+
 | 번호 | 요소 | 설명 |
 |---|---|---|
 | 1 | 수신 상태 표시등 | 정상(초록)·지연(노랑)·실패(빨강) |
@@ -318,6 +327,7 @@ uvicorn app.main:app --port 8102 --env-file .env.k   # K 방송국 (nec-server �
 
 <p align="center"><img src="docs/img/SCR-04-01.png" alt="SCR-04-01 기자 대시보드 (내 기사)" width="100%"></p>
 <p align="center"><sub>SCR-04-01 기자 대시보드 (내 기사)</sub></p>
+
 | 번호 | 요소 | 설명 |
 |---|---|---|
 | 1 | 상태 탭 | 초안·반려·송고됨·출고됨 |
@@ -340,6 +350,7 @@ AI 초안을 사실 확인하며 고친 뒤 데스크로 송고
 
 <p align="center"><img src="docs/img/SCR-04-02.png" alt="SCR-04-02 기사 편집·송고" width="100%"></p>
 <p align="center"><sub>SCR-04-02 기사 편집·송고</sub></p>
+
 | 번호 | 요소 | 설명 |
 |---|---|---|
 | 1 | 근거 데이터 | 기사를 만든 이벤트와 개표 수치 (사실 확인용) |
@@ -363,6 +374,7 @@ AI 초안을 사실 확인하며 고친 뒤 데스크로 송고
 
 <p align="center"><img src="docs/img/SCR-05-01.png" alt="SCR-05-01 데스크 승인 대기 목록" width="100%"></p>
 <p align="center"><sub>SCR-05-01 데스크 승인 대기 목록</sub></p>
+
 | 번호 | 요소 | 설명 |
 |---|---|---|
 | 1 | 대기 목록 | 송고 시각·기자·지역·제목, 오래된 순 |
@@ -384,6 +396,7 @@ AI 초안을 사실 확인하며 고친 뒤 데스크로 송고
 
 <p align="center"><img src="docs/img/SCR-05-02.png" alt="SCR-05-02 기사 검토·승인/반려" width="100%"></p>
 <p align="center"><sub>SCR-05-02 기사 검토·승인/반려</sub></p>
+
 | 번호 | 요소 | 설명 |
 |---|---|---|
 | 1 | 근거 데이터 | 이벤트·최신 개표 수치 비교 (기사 숫자와 다르면 경고) |
@@ -406,6 +419,7 @@ AI 초안을 사실 확인하며 고친 뒤 데스크로 송고
 
 <p align="center"><img src="docs/img/SCR-06-01.png" alt="SCR-06-01 실시간 개표 웹 (메인)" width="100%"></p>
 <p align="center"><sub>SCR-06-01 실시간 개표 웹 (메인)</sub></p>
+
 | 번호 | 요소 | 설명 |
 |---|---|---|
 | 1 | 전체 개표율 | 진행 막대와 갱신 시각 |
@@ -428,6 +442,7 @@ AI 초안을 사실 확인하며 고친 뒤 데스크로 송고
 
 <p align="center"><img src="docs/img/SCR-06-02.png" alt="SCR-06-02 지역별 상세" width="100%"></p>
 <p align="center"><sub>SCR-06-02 지역별 상세</sub></p>
+
 | 번호 | 요소 | 설명 |
 |---|---|---|
 | 1 | 지역 선택 | 5개 구 탭 |
@@ -449,6 +464,7 @@ OBS가 캡처해 방송하는 화면. 영상·AI 앵커·지역 차트·자막�
 
 <p align="center"><img src="docs/img/SCR-07-01.png" alt="SCR-07-01 방송 송출 화면 (1920×1080)" width="100%"></p>
 <p align="center"><sub>SCR-07-01 방송 송출 화면 (1920×1080)</sub></p>
+
 | 번호 | 요소 | 설명 |
 |---|---|---|
 | 1 | AI 앵커 영역 | 앵커 영상 + TTS 음성 |
@@ -472,6 +488,7 @@ OBS가 캡처해 방송하는 화면. 영상·AI 앵커·지역 차트·자막�
 
 <p align="center"><img src="docs/img/SCR-07-02.png" alt="SCR-07-02 큐시트·송출 제어" width="100%"></p>
 <p align="center"><sub>SCR-07-02 큐시트·송출 제어</sub></p>
+
 | 번호 | 요소 | 설명 |
 |---|---|---|
 | 1 | 큐시트 진행 | 10개 구간, 현재 구간 강조 |
@@ -493,13 +510,16 @@ OBS가 캡처해 방송하는 화면. 영상·AI 앵커·지역 차트·자막�
 
 <p align="center"><img src="docs/img/erd_station_a.png" alt="계정·수신·기사·승인" width="100%"></p>
 <p align="center"><sub>계정·수신·기사·승인</sub></p>
+
 <p align="center"><img src="docs/img/erd_station_b.png" alt="방송 송출" width="100%"></p>
 <p align="center"><sub>방송 송출</sub></p>
+
 <details>
 <summary><b>전체 ERD</b></summary>
 
 <p align="center"><img src="docs/img/erd_station.png" alt="station_db 전체" width="100%"></p>
 <p align="center"><sub>station_db 전체</sub></p>
+
 
 </details>
 
@@ -769,6 +789,7 @@ OBS가 캡처해 방송하는 화면. 영상·AI 앵커·지역 차트·자막�
 
 <p align="center"><img src="docs/img/station-onair_api_map.png" alt="API 지도" width="100%"></p>
 <p align="center"><sub>API 지도</sub></p>
+
 | API ID | 메서드 | 경로 | 이름 | 권한 |
 |---|---|---|---|---|
 | API-01-01 | POST | `/api/auth/login` | 로그인 | 없음 |
@@ -799,6 +820,7 @@ OBS가 캡처해 방송하는 화면. 영상·AI 앵커·지역 차트·자막�
 
 <p align="center"><img src="docs/img/api_01.png" alt="영역 01 API" width="100%"></p>
 <p align="center"><sub>영역 01 API</sub></p>
+
 #### API-01-01 `POST /api/auth/login` — 로그인
 권한: 없음 · 테이블 TBL-01-01
 
@@ -840,6 +862,7 @@ OBS가 캡처해 방송하는 화면. 영상·AI 앵커·지역 차트·자막�
 
 <p align="center"><img src="docs/img/api_03.png" alt="영역 03 API" width="100%"></p>
 <p align="center"><sub>영역 03 API</sub></p>
+
 #### API-03-01 `GET /api/sync/status` — 수신 상태
 권한: DESK · 테이블 TBL-03-05, TBL-03-04
 
@@ -871,6 +894,7 @@ OBS가 캡처해 방송하는 화면. 영상·AI 앵커·지역 차트·자막�
 
 <p align="center"><img src="docs/img/api_04.png" alt="영역 04 API" width="100%"></p>
 <p align="center"><sub>영역 04 API</sub></p>
+
 #### API-04-01 `GET /api/articles?status={status}` — 내 기사 목록
 권한: REPORTER · 테이블 TBL-04-01
 
@@ -938,6 +962,7 @@ event: article.rejected  data: {"article_id":9, "comment":"..."}
 
 <p align="center"><img src="docs/img/api_05.png" alt="영역 05 API" width="100%"></p>
 <p align="center"><sub>영역 05 API</sub></p>
+
 #### API-05-01 `GET /api/desk/articles?status=SUBMITTED` — 승인 대기 목록
 권한: DESK · 테이블 TBL-04-01
 
@@ -981,6 +1006,7 @@ event: article.rejected  data: {"article_id":9, "comment":"..."}
 
 <p align="center"><img src="docs/img/api_06.png" alt="영역 06 API" width="100%"></p>
 <p align="center"><sub>영역 06 API</sub></p>
+
 #### API-06-01 `GET /api/public/results` — 전체 개표 현황
 권한: 없음(공개) · 테이블 TBL-03-01, TBL-03-02, TBL-03-03
 
@@ -1037,6 +1063,7 @@ event: article.published data: {"article_id":12, "region":"EAST"}
 
 <p align="center"><img src="docs/img/api_07.png" alt="영역 07 API" width="100%"></p>
 <p align="center"><sub>영역 07 API</sub></p>
+
 #### API-07-01 `GET /api/onair/cuesheet` — 큐시트 조회
 권한: DESK · 테이블 TBL-07-01, TBL-07-03
 
@@ -1110,16 +1137,22 @@ event: cue.changed    data: {"cue_id":7}
 
 <p align="center"><img src="docs/img/station-onair_context.png" alt="저장소 관계" width="100%"></p>
 <p align="center"><sub>저장소 관계</sub></p>
+
 <p align="center"><img src="docs/img/sys_arch.png" alt="구성도" width="100%"></p>
 <p align="center"><sub>구성도</sub></p>
+
 <p align="center"><img src="docs/img/seq_sync.png" alt="수신 → 초안" width="100%"></p>
 <p align="center"><sub>수신 → 초안</sub></p>
+
 <p align="center"><img src="docs/img/seq_approve.png" alt="송고 → 승인 → 웹·방송" width="100%"></p>
 <p align="center"><sub>송고 → 승인 → 웹·방송</sub></p>
+
 <p align="center"><img src="docs/img/seq_elected.png" alt="당선 → 영상 편성" width="100%"></p>
 <p align="center"><sub>당선 → 영상 편성</sub></p>
+
 <p align="center"><img src="docs/img/sys_deploy.png" alt="방송 당일 LAN 구성" width="100%"></p>
 <p align="center"><sub>방송 당일 LAN 구성</sub></p>
+
 | 변수 | M 예 |
 |---|---|
 | STATION_CODE | M |
@@ -1140,8 +1173,10 @@ event: cue.changed    data: {"cue_id":7}
 
 <p align="center"><img src="docs/img/dev_stack.png" alt="권장 환경" width="100%"></p>
 <p align="center"><sub>권장 환경</sub></p>
+
 <p align="center"><img src="docs/img/station-onair_folder.png" alt="폴더 구조" width="100%"></p>
 <p align="center"><sub>폴더 구조</sub></p>
+
 ### 저장소 규칙
 - `.env`, `*.db`는 올리지 않고 `.env.example`만 올린다
 - 브랜치: `main` ← `dev` ← `feature/영역코드-이름` (예: `feature/04-article-gen`)
