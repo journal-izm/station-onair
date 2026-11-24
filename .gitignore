@@ -1,0 +1,90 @@
+# ─────────────────────────────────────────────
+# station-onair .gitignore
+# Python 3.12 · FastAPI · SQLite · LangChain/Chroma · OpenAI · OBS
+# ─────────────────────────────────────────────
+
+# ── 비밀 정보 (절대 올리지 않기) ──
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+secrets/
+
+# ── Python ──
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg-info/
+.eggs/
+build/
+dist/
+pip-wheel-metadata/
+.installed.cfg
+
+# ── 가상환경 ──
+.venv/
+venv/
+env/
+ENV/
+.python-version
+.conda/
+
+# ── 테스트·도구 캐시 ──
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.mypy_cache/
+.ruff_cache/
+.tox/
+.cache/
+
+# ── Jupyter ──
+.ipynb_checkpoints/
+
+# ── DB (SQLite: 선관위·M·K 방송국) ──
+*.db
+*.sqlite
+*.sqlite3
+*.db-journal
+*.db-wal
+*.db-shm
+
+# ── RAG 벡터DB (Chroma) — 원문(rag/candidate_docs)으로 다시 만들 수 있음 ──
+chroma/
+chroma_db/
+.chroma/
+*.parquet
+
+# ── 생성 파일: TTS 음성 (승인 기사마다 새로 생성) ──
+station_server/static/tts/
+*.mp3
+!station_server/static/media/*.mp3
+
+# ── 영상 원본 (용량이 커서 Google Drive에 보관) ──
+*.mp4
+*.mov
+*.mkv
+*.webm
+# 방송용 최종 영상만 올리려면 Git LFS 사용: git lfs track "station_server/static/media/*.mp4"
+
+# ── OBS 녹화·로그 ──
+recordings/
+*.flv
+logs/
+*.log
+
+# ── 편집기·IDE ──
+.vscode/
+!.vscode/extensions.json
+.idea/
+*.swp
+*.swo
+
+# ── 운영체제 ──
+.DS_Store
+Thumbs.db
+desktop.ini
+~$*
