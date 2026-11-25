@@ -1,11 +1,16 @@
 """방송국 초기 데이터 — 계정 5개 · 후보·지역(선관위와 같음) · 후보 자료 · 프롬프트 · 큐시트 · 영상 목록
 
-python seed.py           # 처음 한 번 (여러 번 실행해도 같은 결과, 비밀번호는 처음 한 번만 설정)
-python seed.py --reset   # 수신 결과·이벤트·기사·대기열까지 지우고 다시 (리허설 전)
+python seed.py --env .env.m           # 처음 한 번 (여러 번 실행해도 같은 결과, 비밀번호는 처음 한 번만 설정)
+python seed.py --env .env.m --reset   # 수신 결과·이벤트·기사·대기열까지 지우고 다시 (리허설 전)
+(Windows·macOS 모두 같은 명령. --env를 빼면 .env를 읽음)
 """
+import os
 import re
 import sys
 from pathlib import Path
+
+if "--env" in sys.argv:                       # 어떤 설정 파일을 쓸지 — app을 불러오기 전에 정해야 함
+    os.environ["ENV_FILE"] = sys.argv[sys.argv.index("--env") + 1]
 
 from app import config
 from app.db import SessionLocal, init_db

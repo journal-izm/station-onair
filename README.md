@@ -32,7 +32,7 @@ python -m venv .venv && source .venv/bin/activate   # Windows: .venv\Scripts\act
 pip install -r requirements.txt
 cp .env.example .env.m    # M 방송국 값 채우기 (NEC_API_KEY · DEFAULT_PASSWORD · OPENAI_API_KEY)
 cp .env.example .env.k    # K 방송국 (STATION_CODE=K, 다른 키)
-ENV_FILE=.env.m python seed.py   # 계정 5개 · 후보 자료 · 큐시트 (서버를 처음 켜면 자동으로도 실행)
+python seed.py --env .env.m     # 계정 5개 · 후보 자료 · 큐시트 (서버를 처음 켜면 자동으로도 실행)
 uvicorn app.main:app --port 8101 --env-file .env.m   # M 방송국
 uvicorn app.main:app --port 8102 --env-file .env.k   # K 방송국 (nec-server 먼저 실행)
 ```
