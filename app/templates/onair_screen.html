@@ -6,6 +6,11 @@
 <script src="/static/js/common.js"></script>
 <script src="/static/js/anchor2d.js"></script>
 <script src="/static/js/anchor3d.js"></script>
+<!-- VRoid(VRM) 앵커(?anchor=vrm)용 three.js·three-vrm — 인터넷(CDN)에서 불러옴. 인터넷이 없으면 app/static/vendor/ 에 받아 두고 주소를 바꿈 -->
+<script type="importmap">{"imports":{
+  "three":"https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.js",
+  "three/addons/":"https://cdn.jsdelivr.net/npm/three@0.169.0/examples/jsm/",
+  "@pixiv/three-vrm":"https://cdn.jsdelivr.net/npm/@pixiv/three-vrm@3.1.0/lib/three-vrm.module.min.js"}}</script>
 <style>
   /* 1920×1080 고정 — OBS 브라우저 소스 크기를 1920×1080으로 (NFR-05) */
   html, body { margin:0; width:1920px; height:1080px; overflow:hidden; background:#060A14; color:#F2F5FA;
@@ -58,13 +63,39 @@ let paused = false, startedAt = null, regionNow = 'ALL', abortNow = false, readi
 const $ = id => document.getElementById(id);
 // 앵커 루프 영상 (있으면)
 // 앵커 자리: 기본은 3D AI 앵커 (WebGL을 못 쓰는 PC면 자동으로 2D).
+//   ?anchor=vrm  → VRoid 캐릭터 앵커 (app/static/models/anchor_m.vrm · anchor_k.vrm). 없거나 실패하면 3D 앵커
 //   ?anchor=2d   → 2D AI 앵커
 //   ?anchor=loop → anchor_loop.mp4 반복 영상 (학생 팀이 만든 영상 쓸 때)
+//   &fps=1       → 앵커 칸 구석에 초당 그리는 횟수 표시 · &vrmframe=full → VRoid 앵커 전신
 const ANCHOR_MODE = new URLSearchParams(location.search).get('anchor') || '3d';
 const anchorOpt = { station: {{ station|tojson }}, code: {{ code|tojson }} };
 let ANCHOR = Anchor2D;
-if (ANCHOR_MODE === '3d' && Anchor3D.mount($('a2d'), anchorOpt)) ANCHOR = Anchor3D;
-else Anchor2D.mount($('a2d'), anchorOpt);
+function mountBasic(mode) {
+  if (mode !== '2d' && Anchor3D.mount($('a2d'), anchorOpt)) { ANCHOR = Anchor3D; return '3d'; }
+  Anchor2D.mount($('a2d'), anchorOpt); ANCHOR = Anchor2D; return '2d';
+}
+let anchorKind = '2d';
+const anchorReady = (async () => {
+  if (ANCHOR_MODE === 'vrm') {
+    try {
+      const m = await import('/static/js/anchor_vrm.js');
+      if (await m.default.mount($('a2d'), anchorOpt)) { ANCHOR = m.default; anchorKind = 'vrm'; return; }
+    } catch (e) { console.warn('VRoid 앵커를 불러오지 못함 → 3D 앵커', e); }
+  }
+  anchorKind = mountBasic(ANCHOR_MODE === '2d' ? '2d' : '3d');
+})();
+// 계속 느리면 한 단계 가벼운 앵커로 (VRoid → 3D → 2D). 10초 연속 초당 12번 미만일 때
+let slowCount = 0;
+setInterval(() => {
+  if (!ANCHOR.fps || anchorKind === '2d' || $('full').style.display === 'block' || document.hidden) return;
+  const f = ANCHOR.fps(); slowCount = f > 0 && f < 12 ? slowCount + 1 : 0;
+  if (slowCount >= 10) {
+    slowCount = 0; console.warn('[앵커] 너무 느려서 가벼운 앵커로 바꿈:', anchorKind);
+    ANCHOR.setVisible && ANCHOR.setVisible(false);
+    anchorKind = mountBasic(anchorKind === 'vrm' ? '3d' : '2d');
+    ANCHOR.attachAudio($('voice'));
+  }
+}, 1000);
 if (ANCHOR_MODE === 'loop') {
   $('loop').src = '/static/media/anchor_loop.mp4';
   $('loop').onloadeddata = () => { $('a2d').style.display = 'none'; $('loop').style.display = 'block'; $('loop').play().catch(() => {}); };
@@ -87,6 +118,7 @@ async function drawTicker() {
     $('tk').innerHTML = d.candidates.sort((a, b) => a.id - b.id).map(c =>
       `<span style="color:${c.color}">●</span> <b style="color:${c.color}">${esc(c.name)}</b> ${c.rate.toFixed(1)}%`).join('&nbsp;&nbsp;&nbsp;&nbsp;');
     $('tkrate').textContent = `전체 개표율 ${d.counted_rate.toFixed(1)}%`;
+    lastRate = d.counted_rate;
   } catch (e) {}
 }
 function waitMedia(el, maxSec) {   // 재생이 끝나거나 최대 시간이 지나면 다음으로 (멈춤 방지)
@@ -109,11 +141,11 @@ function speak(text, maxSec) {      // OpenAI 키가 없을 때: 브라우저 �
 async function waitSec(sec) { let left = sec; while (left > 0 && !abortNow) { await sleep(250); if (!paused) left -= 0.25; } }
 
 async function playVideo(n) {
-  $('full').style.display = 'block'; $('bgm').pause();
+  $('full').style.display = 'block'; $('bgm').pause(); ANCHOR.setVisible && ANCHOR.setVisible(false);   // 영상이 앵커를 가리는 동안 그리기 쉼
   const v = $('fullv'); v.src = n.src; v.currentTime = 0;
   await v.play().catch(() => {});
   await waitMedia(v, (n.duration_sec || 60) + 5);
-  $('full').style.display = 'none'; v.pause();
+  $('full').style.display = 'none'; v.pause(); ANCHOR.setVisible && ANCHOR.setVisible(true);
 }
 async function playSlate(n) {
   $('slate').style.display = 'flex'; $('slt').textContent = n.title; $('sls').textContent = `영상 준비 중 · ${n.duration_sec}초`;
@@ -192,7 +224,17 @@ async function playItem(n) {
   await api('POST', `/api/onair/queue/${n.queue_id}/done`, { result: ok }).catch(() => {});
 }
 // 읽을 기사가 없을 때 화면 순환 (BR-09): 전체 → 지도 → 구 5곳 → 격차 카드. 최종 정리(9번 구간)는 전체 ↔ 당선자 카드
-const BOARD_VIEWS = ['ALL', 'MAP', 'STAR', 'DEEP', 'DUNE', 'NEBULA', 'ORBIT', 'GAP'];
+// 읽을 기사가 없을 때 앵커가 손을 휘이 저으면 다음 화면으로 (BR-09). 개표 단계에 따라 나오는 화면이 다름
+//   GAUGE 개표 진행 게이지 · ALL 전체 막대 · MAP 지역별 1위 지도 · COMPARE 다섯 구 나란히 · 구 5곳 막대 · GAP 1·2위 격차
+//   WINCOND 당선 확정 조건 · HEADLINES 최근 기사 제목
+const BOARD_VIEWS = ['GAUGE', 'ALL', 'MAP', 'COMPARE', 'STAR', 'DEEP', 'DUNE', 'NEBULA', 'ORBIT', 'GAP', 'WINCOND', 'HEADLINES'];
+const REGION_CODES = ['STAR', 'DEEP', 'DUNE', 'NEBULA', 'ORBIT'];
+let lastRate = 0;
+function viewFits(v, rate) {
+  if (v === 'GAUGE') return rate < 60;                 // 초반·중반
+  if (v === 'WINCOND' || v === 'GAP') return rate >= 30; // 중반 이후
+  return true;
+}
 let boardIdx = 0, finalIdx = 0;
 async function drawMapView() {
   const d = await api('GET', '/api/public/results');
@@ -228,6 +270,64 @@ async function drawWinnerCard() {
   regionNow = 'ALL';
   return `${w.name} ${w.winner_flag === 'ELECTED' ? '당선 확정' : '1위'}`;
 }
+// ── 새 화면 4가지 ──
+const tile = (k, v, color, sub) => `<div style="flex:1;background:#141C2F;border-radius:16px;padding:24px;text-align:center">
+  <div style="font-size:26px;color:#9AA6BC">${k}</div><div style="font-size:58px;font-weight:900;color:${color || '#F2F5FA'}">${v}</div>${sub ? `<div style="font-size:24px;color:#9AA6BC">${sub}</div>` : ''}</div>`;
+async function drawGauge() {                     // 개표 진행 게이지
+  const d = await api('GET', '/api/public/results'); lastRate = d.counted_rate;
+  const r = d.counted_rate, C = 2 * Math.PI * 200;
+  const counted = d.candidates.reduce((a, c) => a + c.votes, 0);
+  const left = r > 0 ? Math.round(counted * (100 - r) / r) : null;
+  $('ctitle').textContent = '개표 진행';
+  $('bars').innerHTML = `<div style="display:flex;align-items:center;gap:40px">
+    <svg width="460" height="460" viewBox="0 0 460 460" aria-label="개표율 ${r.toFixed(1)}%">
+      <circle cx="230" cy="230" r="200" fill="none" stroke="#1C2742" stroke-width="40"/>
+      <circle cx="230" cy="230" r="200" fill="none" stroke="#00E5FF" stroke-width="40" stroke-linecap="round"
+        stroke-dasharray="${C * r / 100} ${C}" transform="rotate(-90 230 230)" style="filter:drop-shadow(0 0 14px #00E5FF)"/>
+      <text x="230" y="250" text-anchor="middle" fill="#F2F5FA" font-size="96" font-weight="900">${r.toFixed(1)}%</text>
+      <text x="230" y="305" text-anchor="middle" fill="#9AA6BC" font-size="30">전체 개표율</text></svg>
+    <div style="flex:1;display:flex;flex-direction:column;gap:20px">${tile('개표된 표', n(counted) + '표')}${tile('남은 표 (추정)', left == null ? '-' : n(left) + '표')}
+      ${tile('개표가 끝난 구', d.regions.filter(x => x.counted_rate >= 100).length + ' / ' + d.regions.length)}</div></div>`;
+  regionNow = 'ALL'; return `전체 개표율 ${r.toFixed(1)}%`;
+}
+async function drawCompare() {                   // 다섯 구 나란히
+  const d = await api('GET', '/api/public/results'); lastRate = d.counted_rate;
+  $('ctitle').textContent = '다섯 구 한눈에';
+  $('bars').innerHTML = `<div style="display:flex;gap:16px;margin-top:10px">` + d.regions.map(g => {
+    const top = g.candidates[0] || {}, rate = g.counted_rate;
+    return `<div style="flex:1;background:#141C2F;border-radius:16px;padding:22px 14px;text-align:center;border-top:8px solid ${top.color || '#3A4A6B'}">
+      <div style="font-size:32px;font-weight:900">${esc(g.name)}</div>
+      <div style="font-size:24px;color:#9AA6BC;margin:6px 0 18px">개표 ${rate.toFixed(0)}%</div>
+      <div style="width:110px;height:110px;border-radius:50%;margin:0 auto;background:${top.color || '#3A4A6B'};box-shadow:0 0 30px ${top.color || 'transparent'}"></div>
+      <div style="font-size:30px;font-weight:800;margin-top:16px;white-space:nowrap">${top.votes ? esc(top.name) : '개표 전'}</div>
+      <div style="font-size:40px;font-weight:900;color:${top.color || '#9AA6BC'}">${top.votes ? top.rate.toFixed(1) + '%' : '-'}</div>
+      <div style="font-size:20px;color:#9AA6BC;margin-top:10px;white-space:nowrap">${g.candidates[1] && top.votes ? '2위와 ' + n(top.votes - g.candidates[1].votes) + '표' : ''}</div></div>`;
+  }).join('') + `</div>`;
+  regionNow = 'ALL'; return '다섯 구 개표 현황';
+}
+async function drawWinCondition() {              // 당선 확정 조건: 남은 표를 2위가 모두 가져가도 뒤집을 수 없으면 확정
+  const d = await api('GET', '/api/public/results'); lastRate = d.counted_rate;
+  const c = [...d.candidates].sort((a, b) => b.votes - a.votes), r = d.counted_rate;
+  const counted = c.reduce((a, x) => a + x.votes, 0), gap = c[1] ? c[0].votes - c[1].votes : 0;
+  const left = r > 0 ? Math.round(counted * (100 - r) / r) : 0;
+  const done = r >= 100 || gap > left;
+  const w = Math.max(gap, left, 1);
+  $('ctitle').textContent = done ? `${c[0].name} 당선 조건 충족` : '당선 확정까지';
+  $('bars').innerHTML = `<div style="font-size:30px;color:#9AA6BC;margin:-10px 0 24px">남은 표를 2위가 모두 가져가도 뒤집을 수 없으면 당선 확정 (남은 표는 개표율로 추정)</div>`
+    + hbar('1·2위 격차', gap, w, c[0].color, n(gap) + '표') + hbar('남은 표 (추정)', left, w, '#3A4A6B', n(left) + '표')
+    + `<div style="margin-top:30px;font-size:40px;font-weight:900;text-align:center;color:${done ? '#FFB020' : '#F2F5FA'}">
+       ${done ? '격차가 남은 표보다 큼 → 확정 조건 충족' : `격차가 ${n(left - gap + 1)}표 더 벌어지면 확정`}</div>`;
+  regionNow = 'ALL'; return done ? '당선 확정 조건 충족' : '당선 확정 조건';
+}
+async function drawHeadlines() {                 // 최근 기사 제목 3건
+  const list = await api('GET', '/api/public/articles?limit=3');
+  $('ctitle').textContent = '방금 들어온 기사';
+  $('bars').innerHTML = list.length ? list.map(a => `<div style="background:#141C2F;border-radius:16px;padding:24px 28px;margin:18px 0;border-left:8px solid ${a.urgent ? '#FF2D55' : '#00E5FF'}">
+      <div style="font-size:24px;color:#9AA6BC">${a.urgent ? '🚨 긴급 · ' : ''}${esc(a.region_name || '')} · ${a.approved_at || ''}</div>
+      <div style="font-size:38px;font-weight:800;margin-top:6px;line-height:1.3">${esc(a.title)}</div></div>`).join('')
+    : '<div style="font-size:36px;color:#9AA6BC;margin-top:60px;text-align:center">아직 출고된 기사가 없습니다</div>';
+  regionNow = 'ALL'; return '최근 기사';
+}
 const REGION_NAME = { ALL: '전체 득표 현황', STAR: '별빛구', DEEP: '심해구', DUNE: '사막구', NEBULA: '성운구', ORBIT: '궤도구' };
 async function playBoard(n) {
   let head;
@@ -235,9 +335,15 @@ async function playBoard(n) {
     if (n.segment === 'LIVE' && n.order_no > 6) {                // 최종 결과 정리
       head = (finalIdx++ % 2 === 0) ? (await drawChart('ALL'), '최종 결과 정리') : await drawWinnerCard();
     } else {
-      const v = BOARD_VIEWS[boardIdx++ % BOARD_VIEWS.length];
+      let v; for (let k = 0; k < BOARD_VIEWS.length; k++) { v = BOARD_VIEWS[boardIdx++ % BOARD_VIEWS.length]; if (viewFits(v, lastRate)) break; }
+      // 손짓 먼저: 구 막대·지도는 가리키기, 나머지는 휘이 젓기. 손짓 한가운데에서 화면이 바뀜
+      await (ANCHOR.act ? ANCHOR.act(REGION_CODES.includes(v) || v === 'MAP' ? 'point' : 'swipe') : null);
       if (v === 'MAP') head = await drawMapView();
       else if (v === 'GAP') head = await drawGapCard();
+      else if (v === 'GAUGE') head = await drawGauge();
+      else if (v === 'COMPARE') head = await drawCompare();
+      else if (v === 'WINCOND') head = await drawWinCondition();
+      else if (v === 'HEADLINES') head = await drawHeadlines();
       else { await drawChart(v); head = v === 'ALL' ? '실시간 개표 현황' : `${REGION_NAME[v]} 개표 현황`; }
     }
   } catch (e) { head = '실시간 개표 현황'; }
@@ -277,7 +383,7 @@ listen('/api/onair/stream', {
                           if (d.action === 'skip' || d.action === 'reset') { abortNow = true; for (const el of [$('fullv'), $('voice'), $('avatar')]) el.pause();
                             if ('speechSynthesis' in window) speechSynthesis.cancel(); } }
 }, { keep: true });   // 송출 화면은 숨겨져도 연결 유지 (OBS가 캡처 중일 수 있음)
-function startScreen() { $('gate').style.display = 'none'; ANCHOR.attachAudio($('voice')); loop(); }
+async function startScreen() { $('gate').style.display = 'none'; await anchorReady; ANCHOR.attachAudio($('voice')); loop(); }
 $('gate').onclick = startScreen;
 // OBS 브라우저 소스는 클릭 없이도 소리 재생이 허용됨 → 자동 시작. 주소에 ?autostart=1 을 붙여도 자동 시작
 if (/OBS\//.test(navigator.userAgent) || new URLSearchParams(location.search).get('autostart') === '1') startScreen();

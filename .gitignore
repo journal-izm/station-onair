@@ -90,3 +90,6 @@ logs/
 Thumbs.db
 desktop.ini
 ~$*
+
+# VRoid 캐릭터·동작 파일 (용량 큼, 드라이브로 공유)
+app/static/models/

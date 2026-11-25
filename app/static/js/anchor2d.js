@@ -114,5 +114,5 @@ const Anchor2D = (() => {
     bodyG.setAttribute('transform', `translate(0 ${Math.sin(t * 1.6) * 2})`);
     requestAnimationFrame(tick);
   }
-  return { mount, attachAudio, setSpeaking };
+  return { mount, attachAudio, setSpeaking, setVisible() {}, fps() { return 60; }, act() { return new Promise(r => setTimeout(r, 300)); } };
 })();

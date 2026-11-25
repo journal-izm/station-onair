@@ -85,6 +85,9 @@ const Anchor3D = (() => {
 
   // ── 상태 ─────────────────────────────────────────────────────────
   let gl, prog, loc = {}, meshes = {}, canvas, theme;
+  // 성능 안전장치: 1초 30번까지만 그림 · 안 보일 때 쉼 · 계속 느리면 덜 세밀하게 · ?fps=1 이면 초당 그리는 횟수 표시
+  const MAX_FPS = 30, SHOW_FPS = new URLSearchParams(location.search).get('fps') === '1';
+  let visible = true, lastDraw = 0, frames = 0, fpsT = 0, fpsNow = 0, slowSecs = 0, dprCap = 2, fpsBox = null;
   let ctx = null, analyser = null, buf = null, audioRef = null, analyserWorks = false, synthSpeaking = false, open = 0, nextBlink = 2500, blinkT = -9999;
 
   function compile(vs, fs) {
@@ -113,6 +116,7 @@ const Anchor3D = (() => {
   function mount(el, opt = {}) {
     theme = THEMES[opt.code] || THEMES.M;
     el.innerHTML = BG(theme) + '<canvas style="position:absolute;inset:0;width:100%;height:100%"></canvas>' + PLATE(opt.station || '방송국', theme);
+    if (SHOW_FPS) { el.insertAdjacentHTML('beforeend', '<div class="fps" style="position:absolute;right:12px;top:12px;background:#000a;color:#0f0;font:20px monospace;padding:4px 8px;border-radius:6px">-</div>'); fpsBox = el.querySelector('.fps'); }
     canvas = el.querySelector('canvas');
     gl = canvas.getContext('webgl', { antialias: true, alpha: true, premultipliedAlpha: false });
     if (!gl) { el.innerHTML = ''; return false; }
@@ -165,7 +169,15 @@ const Anchor3D = (() => {
 
   // ── 매 프레임 그리기 ─────────────────────────────────────────────
   function tick(now) {
-    const dpr = Math.min(window.devicePixelRatio || 1, 2), w = canvas.clientWidth * dpr | 0, h = canvas.clientHeight * dpr | 0;
+    if (!visible || document.hidden || now - lastDraw < 1000 / MAX_FPS - 1) { requestAnimationFrame(tick); return; }
+    lastDraw = now; frames++;
+    if (now - fpsT > 1000) {
+      fpsNow = frames * 1000 / (now - fpsT); frames = 0; fpsT = now;
+      slowSecs = fpsNow < 20 ? slowSecs + 1 : 0;
+      if (slowSecs >= 5 && dprCap > 0.5) { dprCap = dprCap > 1 ? 1 : dprCap > 0.75 ? 0.75 : 0.5; slowSecs = 0; }
+      if (fpsBox) fpsBox.textContent = `${fpsNow.toFixed(0)} fps · ${dprCap}x`;
+    }
+    const dpr = Math.min(window.devicePixelRatio || 1, dprCap), w = canvas.clientWidth * dpr | 0, h = canvas.clientHeight * dpr | 0;
     if (w && h && (canvas.width !== w || canvas.height !== h)) { canvas.width = w; canvas.height = h; }
     gl.viewport(0, 0, canvas.width, canvas.height);
     gl.clearColor(0, 0, 0, 0); gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
@@ -228,5 +240,8 @@ const Anchor3D = (() => {
 
     requestAnimationFrame(tick);
   }
-  return { mount, attachAudio, setSpeaking };
+  function setVisible(v) { visible = v; }
+  function fps() { return fpsNow; }
+  function act() { return new Promise(r => setTimeout(r, 300)); }   // 도형 앵커는 팔이 없어 손짓 대신 잠깐 기다림
+  return { mount, attachAudio, setSpeaking, setVisible, fps, act };
 })();
