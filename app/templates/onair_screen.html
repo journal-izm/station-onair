@@ -16,6 +16,7 @@
   #anchor .ph { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-size:180px; opacity:.25 }
   #chart { position:absolute; left:900px; top:40px; width:980px; height:820px; border-radius:16px; background:#0B1120;
            border:2px solid #24304A; padding:40px; box-sizing:border-box }
+  #chart svg.map path { stroke:#0B1120; stroke-width:3 } #chart svg.map text { font-size:15px; font-weight:800 }
   #chart h2 { font-size:44px; margin:0 0 40px } #chart .row { display:flex; align-items:center; gap:24px; margin:34px 0; font-size:34px; font-weight:800 }
   #chart .nm { width:250px; flex:none; white-space:nowrap } #chart .v { flex:none } #chart .b { height:70px; border-radius:10px; transition:width .8s } #chart .v { font-variant-numeric:tabular-nums }
   #chart .flag { white-space:nowrap; flex:none; font-size:26px; background:#FFB020; color:#1a1200; border-radius:8px; padding:2px 12px; margin-left:12px }
@@ -117,9 +118,58 @@ async function playItem(n) {
   } catch (e) { ok = 'ERROR'; }
   await api('POST', `/api/onair/queue/${n.queue_id}/done`, { result: ok }).catch(() => {});
 }
+// 읽을 기사가 없을 때 화면 순환 (BR-09): 전체 → 지도 → 구 5곳 → 격차 카드. 최종 정리(9번 구간)는 전체 ↔ 당선자 카드
+const BOARD_VIEWS = ['ALL', 'MAP', 'STAR', 'DEEP', 'DUNE', 'NEBULA', 'ORBIT', 'GAP'];
+let boardIdx = 0, finalIdx = 0;
+async function drawMapView() {
+  const d = await api('GET', '/api/public/results');
+  $('ctitle').textContent = `지역별 1위 · 전체 개표율 ${d.counted_rate.toFixed(1)}%`;
+  $('bars').innerHTML = '<div id="bigmap" style="width:720px;margin:0 auto"></div><div id="maplegend" style="font-size:26px;color:#9AA6BC;text-align:center;margin-top:10px"></div>';
+  drawMap(document.getElementById('bigmap'), d.regions);
+  document.getElementById('maplegend').innerHTML = d.candidates.sort((a, b) => a.id - b.id)
+    .map(c => `<span style="color:${c.color}">■</span> ${esc(c.name)}`).join('&nbsp;&nbsp;&nbsp;');
+  regionNow = 'ALL';
+  return '지역별 1위';
+}
+async function drawGapCard() {
+  const d = await api('GET', '/api/public/results');
+  const c = [...d.candidates].sort((a, b) => b.votes - a.votes);
+  const gap = c.length > 1 ? c[0].votes - c[1].votes : 0;
+  const left = d.regions.filter(r => r.counted_rate < 100).length;
+  $('ctitle').textContent = '1 · 2위 격차';
+  const card = (k, v, color) => `<div style="flex:1;background:#141C2F;border-radius:16px;padding:28px;text-align:center">
+    <div style="font-size:28px;color:#9AA6BC">${k}</div><div style="font-size:64px;font-weight:900;color:${color || '#F2F5FA'}">${v}</div></div>`;
+  $('bars').innerHTML = `<div style="display:flex;gap:24px;margin-top:30px">${card('1위', esc(c[0].name), c[0].color)}${card('격차', n(gap) + '표')}</div>
+    <div style="display:flex;gap:24px;margin-top:24px">${card('전체 개표율', d.counted_rate.toFixed(1) + '%')}${card('개표 중인 구', left + '곳')}</div>`;
+  regionNow = 'ALL';
+  return '1·2위 격차';
+}
+async function drawWinnerCard() {
+  const d = await api('GET', '/api/public/results');
+  const w = d.candidates.find(c => c.winner_flag === 'ELECTED') || [...d.candidates].sort((a, b) => b.votes - a.votes)[0];
+  $('ctitle').textContent = w.winner_flag === 'ELECTED' ? '당선 확정' : '현재 1위';
+  $('bars').innerHTML = `<div style="text-align:center;margin-top:40px">
+    <div style="width:220px;height:220px;border-radius:50%;margin:0 auto;background:${w.color};box-shadow:0 0 60px ${w.color}"></div>
+    <div style="font-size:84px;font-weight:900;margin-top:30px">기호${w.id} ${esc(w.name)}</div>
+    <div style="font-size:36px;color:#9AA6BC">${esc(w.party || '')} · ${w.rate.toFixed(1)}% · ${n(w.votes)}표</div></div>`;
+  regionNow = 'ALL';
+  return `${w.name} ${w.winner_flag === 'ELECTED' ? '당선 확정' : '1위'}`;
+}
+const REGION_NAME = { ALL: '전체 득표 현황', STAR: '별빛구', DEEP: '심해구', DUNE: '사막구', NEBULA: '성운구', ORBIT: '궤도구' };
 async function playBoard(n) {
-  $('headline').textContent = n.segment === 'LIVE' && n.order_no > 6 ? '최종 결과 정리' : '실시간 개표 현황';
-  await drawChart('ALL'); if ($('bgm').paused) $('bgm').play().catch(() => {});
+  let head;
+  try {
+    if (n.segment === 'LIVE' && n.order_no > 6) {                // 최종 결과 정리
+      head = (finalIdx++ % 2 === 0) ? (await drawChart('ALL'), '최종 결과 정리') : await drawWinnerCard();
+    } else {
+      const v = BOARD_VIEWS[boardIdx++ % BOARD_VIEWS.length];
+      if (v === 'MAP') head = await drawMapView();
+      else if (v === 'GAP') head = await drawGapCard();
+      else { await drawChart(v); head = v === 'ALL' ? '실시간 개표 현황' : `${REGION_NAME[v]} 개표 현황`; }
+    }
+  } catch (e) { head = '실시간 개표 현황'; }
+  $('headline').textContent = head;
+  if ($('bgm').paused) $('bgm').play().catch(() => {});
   await waitSec(n.wait || 4);
 }
 async function loop() {
@@ -144,7 +194,7 @@ function setPaused(p) {
 setInterval(() => { if (startedAt) { const s = Math.floor((Date.now() - startedAt) / 1000); $('clock').textContent = String(Math.floor(s / 60)).padStart(2, '0') + ':' + String(s % 60).padStart(2, '0'); } }, 1000);
 drawChart('ALL'); drawTicker();
 listen('/api/onair/stream', {
-  'results.updated': () => { drawTicker(); drawChart(regionNow); },
+  'results.updated': () => { drawTicker(); if (document.querySelector('#bars .row')) drawChart(regionNow); },
   'onair.control': d => { if (d.action === 'pause') setPaused(true); if (d.action === 'resume' || d.action === 'start') setPaused(false);
                           if (d.action === 'start' || d.action === 'reset') startedAt = null;
                           if (d.action === 'skip' || d.action === 'reset') { abortNow = true; for (const el of [$('fullv'), $('voice'), $('avatar')]) el.pause();
