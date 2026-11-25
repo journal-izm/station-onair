@@ -31,9 +31,12 @@ def can_submit(status: str) -> bool:
     return status in EDITABLE
 
 
-def priority(event_type: str) -> int:
-    """BR-07: 당선 관련 1 → 일반 5."""
-    return PRIORITY.get(event_type, 5)
+URGENT_PRIORITY = 0          # 긴급 승인·큐시트 긴급 → 맨 앞 (긴급끼리는 누른 순서)
+
+
+def priority(event_type: str, urgent: bool = False) -> int:
+    """BR-07: 긴급 0 → 당선 관련 1 → 일반 5."""
+    return URGENT_PRIORITY if urgent else PRIORITY.get(event_type, 5)
 
 
 def queue_sort_key(item: dict):

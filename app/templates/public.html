@@ -28,9 +28,9 @@ async function loadResults() {
 }
 async function loadFeed(newId) {
   const list = await api('GET', '/api/public/articles?limit=20');
-  if (!list.length) return;
-  feed.innerHTML = list.map(a => `<li data-id="${a.article_id}">
-    <div class="t">${a.article_id === newId ? '<span class="new">NEW</span>' : ''}${esc(a.title)}</div>
+  if (!list.length) { feed.innerHTML = '<li class="muted">아직 없습니다</li>'; return; }
+  feed.innerHTML = list.map(a => `<li data-id="${a.article_id}" class="${a.urgent ? 'urg' : ''}">
+    <div class="t">${a.urgent ? '<span class="urgent">🚨 긴급</span>' : ''}${a.article_id === newId ? '<span class="new">NEW</span>' : ''}${esc(a.title)}</div>
     <div class="m">${a.approved_at} · ${esc(a.region_name || '')} · ${TYPE_KO[a.event_type] || ''}</div><div class="b">${esc(a.body)}</div></li>`).join('');
   feed.querySelectorAll('li').forEach(li => li.addEventListener('click', () => li.classList.toggle('open')));
 }

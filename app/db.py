@@ -33,3 +33,13 @@ def get_db():
 def init_db():
     from . import models  # noqa: F401
     Base.metadata.create_all(engine)
+    _add_missing_columns()
+
+
+def _add_missing_columns():
+    """예전에 만든 DB 파일에 새 칸 추가 (create_all은 이미 있는 표에 칸을 안 더해 줌)."""
+    from sqlalchemy import inspect, text
+    cols = {c["name"] for c in inspect(engine).get_columns("article")}
+    if "urgent" not in cols:
+        with engine.begin() as con:
+            con.execute(text("ALTER TABLE article ADD COLUMN urgent BOOLEAN NOT NULL DEFAULT 0"))

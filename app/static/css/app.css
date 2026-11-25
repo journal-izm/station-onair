@@ -35,3 +35,11 @@ textarea { resize:vertical } label { color:var(--soft); font-size:13px; display:
 .toast { position:fixed; right:18px; bottom:18px; background:var(--panel); border:1px solid var(--c2); padding:12px 16px; border-radius:10px; display:none; z-index:9 }
 .kpi { font-size:34px; font-weight:800; font-variant-numeric:tabular-nums }
 svg.map path { stroke:var(--bg); stroke-width:3; cursor:pointer; transition:fill .6s } svg.map text { font-size:13px; font-weight:800; fill:#0B1120; pointer-events:none }
+
+/* 긴급 기사 · 방송 대기열 버튼 */
+.urgent { background:#FF2D55; color:#fff; font-size:11px; font-weight:800; padding:1px 6px; border-radius:4px; margin-right:6px; animation:blinkU 1.2s infinite }
+@keyframes blinkU { 50% { opacity:.55 } }
+.feed li.urg { border-left:4px solid #FF2D55; padding-left:10px; background:rgba(255,45,85,.07) }
+button.urg { background:#FF2D55; color:#fff }
+.st.HOLD { color:var(--warn) } .st.DELETED { color:#7C879C; text-decoration:line-through } .st.URGENT { background:#FF2D55; color:#fff } .st.WITHDRAWN { color:#7C879C }
+.qbtn { padding:4px 8px; font-size:12px; border-radius:6px; margin:1px } .qbtn.on { outline:2px solid var(--c2) } .qbtn.warn { background:#5A2330; color:#FFB3BC }

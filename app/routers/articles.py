@@ -20,7 +20,7 @@ class Edit(BaseModel):
 
 def row(a: Article, names: dict | None = None) -> dict:
     return {"article_id": a.article_id, "title": a.title, "status": a.status, "event_type": a.event_type,
-            "region": a.region_code, "region_name": (names or {}).get(a.region_code),
+            "urgent": bool(a.urgent), "region": a.region_code, "region_name": (names or {}).get(a.region_code),
             "created_at": a.created_at.strftime("%H:%M:%S"), "ai_model": a.ai_model,
             "submitted_at": a.submitted_at.strftime("%H:%M:%S") if a.submitted_at else None}
 

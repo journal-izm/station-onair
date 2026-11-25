@@ -1,6 +1,7 @@
 """방송 엔진(logic.onair)과 DB(cue_sheet · onair_queue · media_asset · onair_state)를 잇는 곳."""
 from __future__ import annotations
 
+import logging
 import threading
 import time
 from datetime import datetime
@@ -69,6 +70,7 @@ def pop_item() -> dict | None:
         ev = db.get(CountEvent, a.event_id)
         reg = db.get(Region, q.region_code)
         out = {"queue_id": q.queue_id, "article_id": a.article_id, "title": a.title, "script": a.anchor_script,
+               "urgent": q.priority == rules.URGENT_PRIORITY, "intro_audio": urgent_intro_url(),
                "region_code": q.region_code, "region_name": reg.name if reg else q.region_code,
                "event_type": q.event_type, "candidate_id": ev.candidate_id if ev else None,
                # 기사를 쓸 때의 개표 수치 — 송출 화면이 '기사 관련 차트'를 이 숫자로 그림 (기사와 화면 숫자가 같게)
@@ -117,6 +119,71 @@ def next_item() -> dict:
     if n.get("kind") == "END":
         broker.publish("onair", "onair.control", {"action": "end"})
     return n
+
+
+# ── 긴급 속보 머리말 ("긴급 속보입니다.") — TTS로 한 번만 만들어 두고 긴급 기사마다 앞에 붙임
+URGENT_INTRO_TEXT = "긴급 속보입니다."
+
+
+def _intro_path():
+    return config.TTS_DIR / f"urgent_intro_{config.STATION_CODE.lower()}.wav"
+
+
+def urgent_intro_url() -> str | None:
+    return f"/static/tts/{_intro_path().name}" if _intro_path().exists() else None
+
+
+def make_urgent_intro():
+    """서버 시작 때 스레드에서 부름. 키가 없거나 실패하면 송출 화면이 브라우저 음성으로 말함."""
+    if not config.OPENAI_API_KEY or _intro_path().exists():
+        return
+    try:
+        from .workers.tts_worker import synth
+        config.TTS_DIR.mkdir(parents=True, exist_ok=True)
+        synth(URGENT_INTRO_TEXT, _intro_path())
+    except Exception as e:
+        logging.getLogger("tts").warning("긴급 속보 머리말 음성 실패: %s", e)
+
+
+# ── 큐시트 방송 대기열 버튼: 긴급 / 자동 / 대기 / 삭제 / 모두 삭제
+QUEUE_MODES = ("URGENT", "AUTO", "HOLD", "DELETE", "DELETE_ALL")
+
+
+def set_queue_mode(queue_id: int, mode: str) -> dict:
+    with SessionLocal() as db:
+        q = db.get(OnairQueue, queue_id)
+        if not q:
+            raise LookupError("대기열 항목을 찾을 수 없습니다")
+        if q.status not in ("PREPARING", "WAITING", "HOLD") and not (mode == "DELETE_ALL" and q.status == "DELETED"):
+            raise ValueError(f"이미 {q.status} 상태라 바꿀 수 없습니다")
+        a = db.get(Article, q.article_id)
+        ready = q.tts_id is not None or q.avatar_id is not None or not config.OPENAI_API_KEY
+        release = ("WAITING" if ready else "PREPARING") if q.status == "HOLD" else q.status
+        if mode == "URGENT":
+            q.priority, q.queued_at, q.status = rules.URGENT_PRIORITY, datetime.now(), release   # 긴급끼리는 누른 순서
+            a.urgent = True
+        elif mode == "AUTO":
+            q.priority, q.status = rules.priority(q.event_type), release
+            a.urgent = False
+        elif mode == "HOLD":
+            q.status = "HOLD"
+        elif mode == "DELETE":
+            q.status = "DELETED"                        # 방송에서만 뺌, 웹 기사는 그대로
+        elif mode == "DELETE_ALL":
+            q.status = "DELETED"
+            a.status = "WITHDRAWN"                      # 웹에서도 내림
+        db.commit()
+        out = {"queue_id": q.queue_id, "status": q.status, "urgent": q.priority == rules.URGENT_PRIORITY,
+               "article_status": a.status}
+        article_id = q.article_id
+        need_prepare = mode in ("URGENT", "AUTO") and out["status"] == "PREPARING"
+    if need_prepare:
+        from .workers import tts_worker
+        tts_worker.schedule(queue_id)
+    broker.publish("onair", "queue.changed", {"queue_id": queue_id, "mode": mode, "urgent": out["urgent"]})
+    if mode in ("URGENT", "AUTO", "DELETE_ALL"):
+        broker.publish("public", "article.published", {"article_id": article_id})   # 웹 기사 목록 새로고침
+    return out
 
 
 def item_done(queue_id: int, result: str = "DONE") -> dict:

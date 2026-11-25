@@ -85,7 +85,7 @@ class Article(Base):                         # TBL-04-01
     title: Mapped[str] = mapped_column(String(100))
     body: Mapped[str] = mapped_column(Text)
     anchor_script: Mapped[str] = mapped_column(Text)
-    status: Mapped[str] = mapped_column(String(10), default="DRAFT")   # DRAFT / SUBMITTED / REJECTED / APPROVED
+    status: Mapped[str] = mapped_column(String(10), default="DRAFT")   # DRAFT / SUBMITTED / REJECTED / APPROVED / WITHDRAWN(모두 삭제)
     reporter_id: Mapped[int] = mapped_column(ForeignKey("users.user_id"))
     desk_id: Mapped[int | None] = mapped_column(ForeignKey("users.user_id"), nullable=True)
     rag_sources: Mapped[list | None] = mapped_column(JSON, nullable=True)
@@ -94,6 +94,7 @@ class Article(Base):                         # TBL-04-01
     submitted_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     approved_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     event_type: Mapped[str] = mapped_column(String(20), default="")    # 설계 외 보조 칸 (목록·대기열 규칙용)
+    urgent: Mapped[bool] = mapped_column(Boolean, default=False)       # 긴급 승인 (웹 🚨·최상단, 방송 긴급 속보)
 
 
 class PromptTemplate(Base):                  # TBL-04-02
@@ -180,7 +181,7 @@ class OnairQueue(Base):                      # TBL-07-02
     avatar_id: Mapped[int | None] = mapped_column(ForeignKey("avatar_video.avatar_id"), nullable=True)
     region_code: Mapped[str] = mapped_column(ForeignKey("region.region_code"))
     priority: Mapped[int] = mapped_column(Integer, default=5)
-    status: Mapped[str] = mapped_column(String(10), default="PREPARING")   # PREPARING / WAITING / PLAYING / DONE / SKIPPED
+    status: Mapped[str] = mapped_column(String(10), default="PREPARING")   # PREPARING / WAITING / HOLD(대기) / PLAYING / DONE / SKIPPED / DELETED
     queued_at: Mapped[datetime] = mapped_column(DateTime, default=now)
     played_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     event_type: Mapped[str] = mapped_column(String(20), default="")       # 설계 외 보조 칸 (BR-06)

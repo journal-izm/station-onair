@@ -17,7 +17,7 @@ async function load() {
     <b style="color:${c.color}">${c.rate.toFixed(1)}%</b><span class="muted">${n(c.votes)}표</span></div>
     <div class="bar" style="height:22px;margin-top:6px"><div style="width:${c.rate}%;background:${c.color};box-shadow:0 0 12px ${c.color}"></div></div></div>`).join('');
   const list = await api('GET', '/api/public/articles?region=' + CODE);
-  if (list.length) feed.innerHTML = list.map(a => `<li class="open"><div class="t">${esc(a.title)}</div><div class="m">${a.approved_at}</div><div class="b">${esc(a.body)}</div></li>`).join('');
+  if (list.length) feed.innerHTML = list.map(a => `<li class="open ${a.urgent ? 'urg' : ''}"><div class="t">${a.urgent ? '<span class="urgent">🚨 긴급</span>' : ''}${esc(a.title)}</div><div class="m">${a.approved_at}</div><div class="b">${esc(a.body)}</div></li>`).join('');
 }
 load(); listen('/api/public/stream', { 'results.updated': load, 'article.published': load }, { onResume: load });
 </script></body></html>

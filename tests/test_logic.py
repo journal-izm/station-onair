@@ -195,3 +195,17 @@ def test_pause_resume_does_not_eat_live_time():
     assert b.next(100, lambda: None, lambda c, x: None)["kind"] == "PAUSE"
     b.resume(200)
     assert abs(b.cue_elapsed(210) - 20) < 0.01
+
+
+def test_urgent_priority_first_and_in_press_order():
+    """긴급 승인·큐시트 긴급은 당선 기사보다도 앞, 긴급끼리는 누른(승인한) 순서."""
+    from datetime import datetime, timedelta
+    from app.logic import rules
+    t = datetime(2026, 11, 25, 21, 0, 0)
+    items = [
+        {"queue_id": 1, "priority": rules.priority("ELECTED"), "approved_at": t},
+        {"queue_id": 2, "priority": rules.priority("RATE_MILESTONE", urgent=True), "approved_at": t + timedelta(seconds=20)},
+        {"queue_id": 3, "priority": rules.priority("RATE_MILESTONE"), "approved_at": t - timedelta(seconds=60)},
+        {"queue_id": 4, "priority": rules.priority("LEAD_CHANGE", urgent=True), "approved_at": t + timedelta(seconds=5)},
+    ]
+    assert [i["queue_id"] for i in sorted(items, key=rules.queue_sort_key)] == [4, 2, 1, 3]

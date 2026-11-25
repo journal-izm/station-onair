@@ -55,9 +55,9 @@ def articles(region: str | None = None, limit: int = 20, db: Session = Depends(g
         q = q.filter(Article.region_code == region)
     names = {r.region_code: r.name for r in db.query(Region)}
     return [{"article_id": a.article_id, "title": a.title, "body": a.body, "region": a.region_code,
-             "region_name": names.get(a.region_code), "event_type": a.event_type,
+             "region_name": names.get(a.region_code), "event_type": a.event_type, "urgent": bool(a.urgent),
              "approved_at": a.approved_at.strftime("%H:%M:%S") if a.approved_at else None}
-            for a in q.order_by(Article.approved_at.desc()).limit(min(limit, 100))]
+            for a in q.order_by(Article.urgent.desc(), Article.approved_at.desc()).limit(min(limit, 100))]   # 긴급 기사는 맨 위
 
 
 @router.get("/stream", summary="API-06-04 실시간 알림 (SSE)")

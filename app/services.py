@@ -63,14 +63,17 @@ def _decide(db: Session, article_id: int, desk: User, to: str) -> Article:
     return db.get(Article, article_id)
 
 
-def approve(db: Session, article_id: int, desk: User, comment: str = "") -> tuple[Article, OnairQueue]:
+def approve(db: Session, article_id: int, desk: User, comment: str = "", urgent: bool = False) -> tuple[Article, OnairQueue]:
     a = _decide(db, article_id, desk, "APPROVED")
+    a = db.get(Article, article_id)
+    a.urgent = bool(urgent)
     if comment:
         db.query(ArticleReview).filter_by(article_id=article_id).order_by(ArticleReview.review_id.desc()).first().comment = comment[:300]
     q = enqueue(db, a)
     db.commit()
-    broker.publish("public", "article.published", {"article_id": a.article_id, "region": a.region_code})
+    broker.publish("public", "article.published", {"article_id": a.article_id, "region": a.region_code, "urgent": a.urgent})
     broker.publish("newsroom", "article.approved", {"article_id": a.article_id})
+    broker.publish("onair", "queue.changed", {"queue_id": q.queue_id, "urgent": a.urgent})
     from .workers import tts_worker
     tts_worker.schedule(q.queue_id)
     return a, q
@@ -88,12 +91,13 @@ def reject(db: Session, article_id: int, desk: User, comment: str) -> Article:
 
 def enqueue(db: Session, a: Article) -> OnairQueue:
     """승인 기사 → 방송 대기열 (PREPARING). BR-06 옛 기사 건너뛰기."""
-    q = OnairQueue(article_id=a.article_id, region_code=a.region_code, priority=rules.priority(a.event_type),
+    q = OnairQueue(article_id=a.article_id, region_code=a.region_code, priority=rules.priority(a.event_type, a.urgent),
                    status="PREPARING", event_type=a.event_type, queued_at=datetime.now())
     db.add(q)
     db.flush()
     waiting = [{"queue_id": w.queue_id, "region_code": w.region_code, "event_type": w.event_type, "status": w.status,
-                "approved_at": w.queued_at} for w in db.query(OnairQueue).filter(OnairQueue.status.in_(("PREPARING", "WAITING")))]
+                "approved_at": w.queued_at} for w in db.query(OnairQueue).filter(OnairQueue.status.in_(("PREPARING", "WAITING")),
+                                                       OnairQueue.priority != rules.URGENT_PRIORITY)]   # 긴급·대기(HOLD)는 자동 건너뛰기 안 함
     new = {"queue_id": q.queue_id, "region_code": q.region_code, "event_type": q.event_type, "approved_at": q.queued_at}
     for qid in rules.stale_items(new, waiting):
         db.get(OnairQueue, qid).status = "SKIPPED"

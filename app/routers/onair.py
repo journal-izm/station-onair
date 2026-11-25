@@ -1,7 +1,7 @@
 """영역 07 개표 방송 송출 — API-07-01 ~ 05 (데스크·송출 PC)."""
 from typing import Literal
 
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
@@ -16,6 +16,10 @@ router = APIRouter(prefix="/api/onair", tags=["07 방송 송출"], dependencies=
 
 class Done(BaseModel):
     result: Literal["DONE", "ERROR"] = "DONE"
+
+
+class QueueMode(BaseModel):
+    mode: Literal["URGENT", "AUTO", "HOLD", "DELETE", "DELETE_ALL"]
 
 
 class Control(BaseModel):
@@ -48,6 +52,16 @@ def done(queue_id: int, body: Done = Done()):
     return onair_service.item_done(queue_id, body.result)
 
 
+@router.post("/queue/{queue_id}/mode", summary="큐시트 대기열 버튼 — 긴급·자동·대기·삭제·모두 삭제")
+def queue_mode(queue_id: int, body: QueueMode):
+    try:
+        return onair_service.set_queue_mode(queue_id, body.mode)
+    except LookupError as e:
+        raise HTTPException(404, str(e))
+    except ValueError as e:
+        raise HTTPException(409, str(e))
+
+
 @router.post("/control", summary="API-07-04 송출 제어")
 def control(body: Control):
     return onair_service.control(body.action)
@@ -60,6 +74,7 @@ def status(db: Session = Depends(get_db)):
          .order_by(OnairQueue.queue_id.desc()).limit(20).all())
     return {**onair_service.status(),
             "queue_items": [{"queue_id": o.queue_id, "title": a.title, "status": o.status, "priority": o.priority,
+                             "urgent": o.priority == 0, "article_status": a.status,
                              "region_name": names.get(o.region_code), "media": _media_label(db, o)}
                             for o, a in q]}
 

@@ -41,6 +41,9 @@ async def lifespan(app: FastAPI):
     # 벡터 검색(Chroma) 준비는 처음 한 번 몇 초 걸림 → 미리 스레드에서 (첫 기사 때 멈춤 방지)
     from .rag import _chroma
     loop.run_in_executor(None, _chroma)
+    # "긴급 속보입니다." 머리말 음성도 미리 (OpenAI 키가 있을 때 한 번만)
+    from .onair_service import make_urgent_intro
+    loop.run_in_executor(None, make_urgent_intro)
     config.require("SECRET_KEY", "DEFAULT_PASSWORD", *(["NEC_API_KEY"] if config.SYNC_ENABLED else []))
     init_db()
     for d in (config.MEDIA_DIR, config.TTS_DIR, config.AVATAR_DIR):

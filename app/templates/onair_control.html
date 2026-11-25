@@ -14,7 +14,7 @@
   </div>
   <div class="grid g2">
     <section class="panel"><h2>20분 큐시트</h2><table class="t"><thead><tr><th>#</th><th>시작</th><th>구간</th><th>길이</th><th>영상 파일</th><th>상태</th></tr></thead><tbody id="cues"></tbody></table></section>
-    <section class="panel"><h2>방송 대기열 (최근 20)</h2><table class="t"><thead><tr><th>#</th><th>기사</th><th>지역</th><th>음성</th><th>상태</th></tr></thead><tbody id="queue"></tbody></table></section>
+    <section class="panel"><h2>방송 대기열 (최근 20)</h2><table class="t"><thead><tr><th>#</th><th>기사</th><th>지역</th><th>음성</th><th>상태</th><th>방송</th></tr></thead><tbody id="queue"></tbody></table></section>
   </div>
 </main>
 <script>
@@ -26,12 +26,37 @@ async function load() {
   $('onairStatus').textContent = s.status; $('onairStatus').style.color = {ON_AIR: 'var(--ok)', PAUSED: 'var(--warn)', ENDED: 'var(--c2)'}[s.status] || 'var(--text)';
   cue.textContent = s.current_cue ? `${s.current_cue}. ${s.cue_title}` : '-';
   elapsed.textContent = mmss(s.elapsed || 0); winner.textContent = s.winner_name || '-';
-  queue.innerHTML = s.queue_items.map(q => `<tr><td>${q.queue_id}</td><td>${esc(q.title)}</td><td>${esc(q.region_name || '')}</td><td>${q.media}</td><td><span class="st ${q.status}">${q.status}</span></td></tr>`).join('');
+  queue.innerHTML = s.queue_items.map(qRow).join('');
+  queue.querySelectorAll('button[data-mode]').forEach(b => b.onclick = () => setMode(+b.dataset.q, b.dataset.mode, b));
   const c = await api('GET', '/api/onair/cuesheet');
   cues.innerHTML = c.map(x => `<tr><td>${x.order_no}</td><td>${mmss(x.planned_start_sec)}</td><td>${esc(x.title)}</td><td>${x.duration_sec}초</td>
     <td>${x.media_needed.length ? (x.media_missing.length ? `<span style="color:var(--warn)">⚠ 없음: ${x.media_missing.map(f => f.split('/').pop()).join(', ')}</span>` : '<span style="color:var(--ok)">준비됨</span>') : '<span class="muted">대기열</span>'}</td>
     <td><span class="st">${x.status}</span></td></tr>`).join('');
 }
+// 방송 대기열 버튼 — 긴급(바로 다음) · 자동(순서대로) · 대기(보류) · 삭제(방송만) · 모두 삭제(방송+웹)
+const Q_KO = { PREPARING: '준비 중', WAITING: '자동', HOLD: '대기', PLAYING: '방송 중', DONE: '완료', SKIPPED: '건너뜀', DELETED: '삭제됨' };
+function qRow(q) {
+  const live = ['PREPARING', 'WAITING', 'HOLD'].includes(q.status);
+  const label = q.status === 'DELETED' && q.article_status === 'WITHDRAWN' ? '모두 삭제됨' : (q.urgent && live ? '긴급' : (Q_KO[q.status] || q.status));
+  const cls = q.urgent && live ? 'URGENT' : q.status;
+  const mode = q.status === 'HOLD' ? 'HOLD' : (q.urgent ? 'URGENT' : 'AUTO');
+  const b = (m, t, extra = '') => `<button class="qbtn ${extra} ${live && mode === m ? 'on' : ''}" data-q="${q.queue_id}" data-mode="${m}">${t}</button>`;
+  const btns = live ? b('URGENT', '🚨 긴급', 'urg') + b('AUTO', '자동') + b('HOLD', '대기') + b('DELETE', '삭제', 'warn') + b('DELETE_ALL', '모두 삭제', 'warn')
+                    : (q.status === 'DELETED' && q.article_status !== 'WITHDRAWN' ? b('DELETE_ALL', '웹에서도 내리기', 'warn') : '');
+  return `<tr><td>${q.queue_id}</td><td>${q.urgent ? '<span class="urgent">🚨</span>' : ''}${esc(q.title)}</td><td>${esc(q.region_name || '')}</td><td>${q.media}</td>
+    <td><span class="st ${cls}">${label}</span></td><td style="white-space:nowrap">${btns}</td></tr>`;
+}
+let armed = null;   // 삭제는 두 번 눌러야 (실수 방지)
+async function setMode(id, mode, btn) {
+  if (mode.startsWith('DELETE') && armed !== id + mode) {
+    armed = id + mode; btn.textContent = '한 번 더 누르면 ' + (mode === 'DELETE' ? '삭제' : '모두 삭제'); setTimeout(() => { if (armed === id + mode) { armed = null; load(); } }, 3000); return;
+  }
+  armed = null;
+  try { await api('POST', `/api/onair/queue/${id}/mode`, { mode });
+        toast({ URGENT: '🚨 긴급 — 지금 기사 다음에 바로 읽습니다', AUTO: '자동 — 순서대로 방송합니다', HOLD: '대기 — 방송하지 않고 둡니다',
+                DELETE: '삭제 — 방송에서 뺐습니다 (웹 기사는 그대로)', DELETE_ALL: '모두 삭제 — 방송과 웹에서 모두 내렸습니다' }[mode]); load(); }
+  catch (e) { toast(e.message); load(); }
+}
 load(); every(load, 2000);
-listen('/api/onair/stream', { 'cue.changed': load, 'onair.control': load, 'queue.ready': load });
+listen('/api/onair/stream', { 'cue.changed': load, 'onair.control': load, 'queue.ready': load, 'queue.changed': load });
 </script></body></html>
