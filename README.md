@@ -55,6 +55,19 @@ uvicorn app.main:app --port 8102 --env-file .env.k --timeout-graceful-shutdown 2
 - AI 기사의 득표율 숫자가 실제 개표 수치와 다르면 그 초안은 버리고 틀 기사로 바꿉니다 (환각 방지).
 - 화면 주소: 개표 웹 `/` · 로그인 `/login` · 기자 `/reporter` · 데스크 `/desk` · 수신 모니터 `/monitor` · 큐시트 `/onair/control` · 송출 화면 `/onair/screen` (OBS 1920×1080)
 
+## 🛠 실행할 때 알아 둘 점
+
+| 상황 | 해결 |
+|---|---|
+| 방송국 서버가 Ctrl+C로 안 꺼짐 | 열린 화면(개표 웹·수신 모니터·송출 화면)의 실시간 연결(SSE)이 끝나길 기다리는 중. 8101·8102 브라우저 탭을 닫거나 Ctrl+C를 한 번 더. 켤 때 --timeout-graceful-shutdown 2를 붙이면 2초 뒤 꺼짐 |
+| 서버 켜는 순서 | 선관위(8000) → M(8101) → K(8102). 수신 모니터(/monitor)가 '● 정상'인지 확인한 뒤 선관위 ▶ 시작 |
+| 초기 데이터(seed) | 선관위: python seed.py / 방송국: python seed.py --env .env.m (PowerShell에서는 ENV_FILE=… 앞붙이기가 안 됨). 두 서버 모두 처음 켤 때 데이터가 없으면 자동 실행 |
+| 방송국 키 | 선관위 .env에 STATION_KEY_M · STATION_KEY_K를 직접 정해 두고, 방송국 .env.m · .env.k의 NEC_API_KEY에 같은 값. 수신 모니터에 '응답 401'이면 키가 다른 것 |
+| DB 파일 칸 | STATION_DB_URL은 비워 두거나 파일 이름만(station_m.db / station_k.db). M·K가 같은 파일을 쓰면 데이터가 섞임 |
+| 다른 방송국 링크 | OTHER_STATION_URL — M은 http://localhost:8102, K는 http://localhost:8101 |
+
+방송국 실행 명령: `uvicorn app.main:app --port 8101 --env-file .env.m --timeout-graceful-shutdown 2`
+
 ## 🧪 테스트
 
 ```bash
