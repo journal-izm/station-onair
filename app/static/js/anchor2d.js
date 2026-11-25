@@ -6,7 +6,7 @@ const Anchor2D = (() => {
   let ctx = null, analyser = null, buf = null, synthSpeaking = false, open = 0, nextBlink = 2500, blinkT = -9999;
   // 방송국별 앵커 (둘 다 원본 캐릭터). M: 남색 배경·긴 머리·시안 넥타이 / K: 보라 배경·짧은 머리·안경·마젠타 스카프
   const THEMES = {
-    M: { bg: ['#4A6FB5', '#2B4378', '#18264A'], suit: ['#22324F', '#121C30'], hair: ['#3B2D5C', '#1E1733'], tie: '#00E5FF', pin: '#A6FF00',
+    M: { bg: ['#6E93D6', '#4466A6', '#2A3F72'], suit: ['#22324F', '#121C30'], hair: ['#3B2D5C', '#1E1733'], tie: '#00E5FF', pin: '#A6FF00',
          arc1: '#00E5FF', arc2: '#FF2BD6', iris: '#3A2A6A', longHair: true, glasses: false },
     K: { bg: ['#8A5BC4', '#55367F', '#2A1A45'], suit: ['#4A2338', '#2A1220'], hair: ['#1F1A1A', '#0D0A0A'], tie: '#FF2BD6', pin: '#00E5FF',
          arc1: '#FFB800', arc2: '#00FFA3', iris: '#5A3A1A', longHair: false, glasses: true },
