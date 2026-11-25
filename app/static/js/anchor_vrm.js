@@ -83,6 +83,10 @@ const actions = {};
 let current = null, visible = true, lastDraw = 0, frames = 0, fpsT = 0, fpsNow = 0, slowSecs = 0, dpr = 1;
 let ctx = null, analyser = null, buf = null, audioRef = null, analyserWorks = false, synthSpeaking = false, open = 0;
 let nextBlink = 2500, blinkT = -9999, gesture = null;          // gesture = {name, t0, dur}
+// 지도 무대(?stage=map): 캐릭터가 지도 앞을 걸어 다님
+let STAGE = 'box', baseRot = 0, rotY = 0;
+const walk = { x: 0, target: null, facing: 0, resolve: null, walking: false };
+const WALK_SPEED = 0.9;                                             // 1초에 0.9m
 
 function level() {
   if (analyser) {
@@ -116,6 +120,14 @@ function blendBone(n, x, y, z, w) {
 }
 function proceduralPose(t, o) {
   const hasIdle = !!actions.idle;
+  if (walk.walking && !actions.walk) {                              // 걷기 동작 파일이 없을 때 계산식 걸음
+    const ph = t * 7, sw = Math.sin(ph);
+    blendBone('leftUpperLeg', sw * 0.45, 0, 0, 1); blendBone('rightUpperLeg', -sw * 0.45, 0, 0, 1);
+    blendBone('leftLowerLeg', Math.max(0, -sw) * 0.7, 0, 0, 1); blendBone('rightLowerLeg', Math.max(0, sw) * 0.7, 0, 0, 1);
+    blendBone('leftUpperArm', -sw * 0.35, 0, -1.2, 1); blendBone('rightUpperArm', sw * 0.35, 0, 1.2, 1);
+    blendBone('hips', 0, 0, 0, 1);
+    return;
+  }
   if (!hasIdle) {                                                   // 팔 내리기 + 숨쉬기 + 말할 때 손 조금
     blendBone('leftUpperArm', 0, 0, -1.2 + o * 0.15, 1);
     blendBone('rightUpperArm', 0, 0, 1.2 - o * 0.15, 1);
@@ -133,8 +145,9 @@ function proceduralPose(t, o) {
     blendBone('leftUpperArm', 0, sweep, -0.15, w);
     blendBone('leftLowerArm', 0, -0.35, 0, w);
     blendBone('leftHand', 0, 0, 0.3, w);
-  } else if (gesture.name === 'point') {                            // 차트·지도 쪽 가리키기
-    blendBone('leftUpperArm', 0, -0.35, -0.05, w);
+  } else if (gesture.name === 'point') {                            // 차트·지도 쪽 가리키기 (지도 무대: 팔을 비스듬히 위로)
+    if (STAGE === 'map') blendBone('leftUpperArm', 0, -0.15, 0.45, w);
+    else blendBone('leftUpperArm', 0, -0.35, -0.05, w);
     blendBone('leftLowerArm', 0, -0.05, 0, w);
   } else if (gesture.name === 'bow') {
     blendBone('spine', 0.35 * w, 0, 0, 1); blendBone('neck', 0.25 * w, 0, 0, 1);
@@ -149,6 +162,9 @@ function frameCamera() {
   const v = new THREE.Vector3();
   const head = bone('head').getWorldPosition(v.clone());
   const hips = bone('hips').getWorldPosition(v.clone());
+  if (STAGE === 'map') {                                           // 지도 무대: 넓은 화면에 전신, 발이 아래쪽
+    camera.position.set(0, 1.0, 4.85); camera.lookAt(0, 1.0, 0); return;
+  }
   if (FRAME === 'full') {
     const h = head.y + 0.15;
     camera.position.set(0, h * 0.55, h * 2.1); camera.lookAt(0, h * 0.5, 0);
@@ -166,7 +182,20 @@ function tick(now) {
   const dt = Math.min(clock.getDelta(), 0.1), t = now / 1000;
   const target = level(); open += (target - open) * (target > open ? 0.6 : 0.25);
   const o = Math.max(0, Math.min(1, open));
-  if (actions.talk) play(o > 0.15 || synthSpeaking ? 'talk' : 'idle', 0.5);
+  if (walk.target != null) {                                       // 목표 지점까지 걷기
+    const dx = walk.target - walk.x;
+    walk.walking = true; walk.facing = dx > 0 ? Math.PI / 2 : -Math.PI / 2;
+    walk.x += Math.sign(dx) * Math.min(Math.abs(dx), WALK_SPEED * dt);
+    if (Math.abs(walk.target - walk.x) < 0.01) {
+      walk.target = null; walk.walking = false; walk.facing = 0;
+      const r = walk.resolve; walk.resolve = null; if (r) setTimeout(r, 350);   // 카메라 쪽으로 돌아선 뒤
+    }
+  }
+  rotY += (walk.facing - rotY) * Math.min(1, dt * 8);
+  vrm.scene.position.x = walk.x; vrm.scene.rotation.y = baseRot + rotY;
+  if (walk.walking && actions.walk) play('walk', 0.3);
+  else if (actions.talk) play(o > 0.15 || synthSpeaking ? 'talk' : 'idle', 0.5);
+  else if (actions.idle && current === actions.walk) play('idle', 0.3);
   if (mixer) mixer.update(dt);
   proceduralPose(t, o);
   const em = vrm.expressionManager;
@@ -195,11 +224,12 @@ function resize() {
 async function mount(element, opt = {}) {
   el = element;
   const code = opt.code === 'K' ? 'K' : 'M', theme = THEMES[code];
+  STAGE = opt.stage === 'map' ? 'map' : 'box';
   try {
-    el.innerHTML = `<div style="position:absolute;inset:0;background:${theme.bg}"></div>
+    el.innerHTML = `${STAGE === 'map' ? '' : `<div style="position:absolute;inset:0;background:${theme.bg}"></div>`}
       <canvas style="position:absolute;inset:0;width:100%;height:100%"></canvas>
-      <div style="position:absolute;left:10%;right:10%;bottom:0;height:10%;border-radius:10px;background:#0E1527;border:3px solid ${theme.line};
-        display:flex;align-items:center;justify-content:center;color:#F2F5FA;font-weight:800;font-size:34px">${opt.station || '방송국'} · AI 앵커</div>
+      <div style="display:${STAGE === 'map' ? 'none' : 'flex'};position:absolute;left:10%;right:10%;bottom:0;height:10%;border-radius:10px;background:#0E1527;border:3px solid ${theme.line};
+        align-items:center;justify-content:center;color:#F2F5FA;font-weight:800;font-size:34px">${opt.station || '방송국'} · AI 앵커</div>
       <div class="vrmload" style="position:absolute;left:0;right:0;top:45%;text-align:center;color:#DDE4F2;font-size:28px">앵커 불러오는 중…</div>
       ${SHOW_FPS ? '<div class="fps" style="position:absolute;right:12px;top:12px;background:#000a;color:#0f0;font:20px monospace;padding:4px 8px;border-radius:6px">-</div>' : ''}`;
     canvas = el.querySelector('canvas'); fpsBox = el.querySelector('.fps');
@@ -219,6 +249,7 @@ async function mount(element, opt = {}) {
     VRMUtils.removeUnnecessaryVertices(gltf.scene);
     VRMUtils.combineSkeletons?.(gltf.scene);
     VRMUtils.rotateVRM0(vrm);                                       // 옛 VRM 0.x도 앞을 보게
+    baseRot = vrm.scene.rotation.y;
     vrm.scene.traverse(o => { o.frustumCulled = false; });
     scene.add(vrm.scene);
     vrm.scene.updateMatrixWorld(true);
@@ -274,5 +305,16 @@ function act(name) {
   return new Promise(r => setTimeout(r, dur * 500));
 }
 
-window.AnchorVRM = { mount, attachAudio, setSpeaking, setVisible, fps, act };
+// 지도 무대: 화면 가로 위치(0=왼쪽 끝, 1=오른쪽 끝)로 걸어감. side=true 면 그 지점의 왼쪽에 서서 가리킬 준비
+function walkTo(fx, side = false) {
+  if (!vrm || STAGE !== 'map') return Promise.resolve();
+  const halfW = camera.position.z * Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)) * camera.aspect;
+  let x = (fx - 0.5) * 2 * halfW - (side ? 0.45 : 0);
+  x = Math.max(-halfW + 0.4, Math.min(halfW - 0.4, x));
+  if (Math.abs(x - walk.x) < 0.05) return Promise.resolve();
+  if (walk.resolve) walk.resolve();
+  return new Promise(r => { walk.target = x; walk.resolve = r; setTimeout(r, 12000); });   // 12초 넘으면 그냥 다음으로
+}
+
+window.AnchorVRM = { mount, attachAudio, setSpeaking, setVisible, fps, act, walkTo };
 export default window.AnchorVRM;
