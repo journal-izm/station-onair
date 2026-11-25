@@ -60,3 +60,10 @@ MEDIA_DIR = APP_DIR / "static" / "media"
 TTS_DIR = APP_DIR / "static" / "tts"
 AVATAR_DIR = APP_DIR / "static" / "avatar"
 VECTOR_DIR = BASE_DIR / "vectordb"
+
+
+def require(*names: str) -> None:
+    """꼭 필요한 값이 .env에 없으면 무엇이 없는지 알려 주고 멈춤 (TC-ENV-02)."""
+    missing = [n for n in names if not os.getenv(n)]
+    if missing:
+        raise SystemExit(f"[설정 오류] .env에 다음 값이 없습니다: {', '.join(missing)}  (.env.example 참고)")

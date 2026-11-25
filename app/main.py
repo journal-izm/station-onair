@@ -27,6 +27,7 @@ log = logging.getLogger("station")
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     tasks.set_loop(asyncio.get_running_loop())
+    config.require("SECRET_KEY", "DEFAULT_PASSWORD", *(["NEC_API_KEY"] if config.SYNC_ENABLED else []))
     init_db()
     for d in (config.MEDIA_DIR, config.TTS_DIR, config.AVATAR_DIR):
         d.mkdir(parents=True, exist_ok=True)

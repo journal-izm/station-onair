@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 
 from .. import onair_service
 from ..db import get_db
-from ..models import Article, CueSheet, MediaAsset, OnairQueue, Region
+from ..models import Article, AvatarVideo, CueSheet, MediaAsset, OnairQueue, Region
 from ..security import desk_only
 from ..sse import broker
 
@@ -60,8 +60,17 @@ def status(db: Session = Depends(get_db)):
          .order_by(OnairQueue.queue_id.desc()).limit(20).all())
     return {**onair_service.status(),
             "queue_items": [{"queue_id": o.queue_id, "title": a.title, "status": o.status, "priority": o.priority,
-                             "region_name": names.get(o.region_code), "media": "AVATAR" if o.avatar_id else ("TTS" if o.tts_id else "-")}
+                             "region_name": names.get(o.region_code), "media": _media_label(db, o)}
                             for o, a in q]}
+
+
+def _media_label(db: Session, o: OnairQueue) -> str:
+    av = db.get(AvatarVideo, o.avatar_id) if o.avatar_id else None
+    if av and av.status == "READY":
+        return "AVATAR"
+    if o.tts_id:
+        return "TTS"
+    return "준비 중" if o.status == "PREPARING" else "브라우저 음성"
 
 
 @router.get("/stream", summary="API-07-05 송출 상태 알림 (SSE)")
