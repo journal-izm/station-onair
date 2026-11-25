@@ -85,7 +85,7 @@ const Anchor3D = (() => {
 
   // ── 상태 ─────────────────────────────────────────────────────────
   let gl, prog, loc = {}, meshes = {}, canvas, theme;
-  let ctx = null, analyser = null, buf = null, synthSpeaking = false, open = 0, nextBlink = 2500, blinkT = -9999;
+  let ctx = null, analyser = null, buf = null, audioRef = null, analyserWorks = false, synthSpeaking = false, open = 0, nextBlink = 2500, blinkT = -9999;
 
   function compile(vs, fs) {
     const sh = (t, s) => { const o = gl.createShader(t); gl.shaderSource(o, s); gl.compileShader(o);
@@ -141,20 +141,24 @@ const Anchor3D = (() => {
 
   // ── 소리 → 입 크기 (Anchor2D와 같은 방식) ─────────────────────────
   function attachAudio(audioEl) {
+    audioRef = audioEl;                       // 소리 분석이 안 되는 환경(OBS 등)에서도 '재생 중'이면 입을 움직이기 위해 기억
+    audioEl.addEventListener('play', () => { if (ctx && ctx.state === 'suspended') ctx.resume().catch(() => {}); });
     try {
       ctx = ctx || new (window.AudioContext || window.webkitAudioContext)();
       const src = ctx.createMediaElementSource(audioEl);
       analyser = ctx.createAnalyser(); analyser.fftSize = 1024; buf = new Uint8Array(analyser.fftSize);
       src.connect(analyser); analyser.connect(ctx.destination);
-      if (ctx.state === 'suspended') ctx.resume();
+      if (ctx.state === 'suspended') ctx.resume().catch(() => {});
+      console.info('[앵커] 소리 분석 연결됨, 상태:', ctx.state);
     } catch (e) { console.warn('입 모양 연결 실패 — 소리는 그대로 나감', e); }
   }
   function setSpeaking(v) { synthSpeaking = v; }
   function level() {
     if (analyser) { analyser.getByteTimeDomainData(buf);
       let s = 0; for (let i = 0; i < buf.length; i++) { const v = (buf[i] - 128) / 128; s += v * v; }
-      const rms = Math.sqrt(s / buf.length); if (rms > 0.01) return Math.min(1, rms * 5); }
-    if (synthSpeaking) { const t = performance.now() / 1000;
+      const rms = Math.sqrt(s / buf.length); if (rms > 0.012) { analyserWorks = true; return Math.min(1, Math.sqrt(rms) * 2.4); } }   // 작은 소리에도 입이 잘 벌어지게
+    const playing = !analyserWorks && audioRef && !audioRef.paused && !audioRef.ended && audioRef.currentTime > 0;   // 소리 분석이 안 될 때(OBS 등)는 재생 중이면 흉내
+    if (synthSpeaking || playing) { const t = performance.now() / 1000;
       return Math.max(0, 0.45 + 0.35 * Math.sin(t * 13) + 0.2 * Math.sin(t * 7.3) - (Math.random() < 0.08 ? 0.6 : 0)); }
     return 0;
   }
@@ -218,9 +222,9 @@ const Anchor3D = (() => {
     }
     if (tm.glasses) part(H, 'box', [0, 0.16, 1.04], [0.18, 0.03, 0.03], '#FFB800', 0.45);
     part(H, 'sph', [0, -0.12, 0.98], [0.08, 0.14, 0.1], SKIN2);                                 // 코
-    part(H, 'sph', [0, -0.47, 0.87], [0.2 - o * 0.03, 0.04 + o * 0.1, 0.06], LIP);              // 입술
-    if (o > 0.05) part(H, 'sph', [0, -0.47, 0.885], [0.15, 0.08 * o, 0.065], MOUTH);            // 입 안
-    if (o > 0.35) part(H, 'box', [0, -0.47 + 0.055 * o, 0.94], [0.13, 0.025, 0.02], '#FFFFFF'); // 윗니
+    part(H, 'sph', [0, -0.47, 0.87], [0.2 - o * 0.04, 0.04 + o * 0.15, 0.06], LIP);              // 입술
+    if (o > 0.05) part(H, 'sph', [0, -0.47, 0.885], [0.15 - o * 0.02, 0.12 * o, 0.065], MOUTH);            // 입 안
+    if (o > 0.35) part(H, 'box', [0, -0.47 + 0.085 * o, 0.94], [0.13, 0.025, 0.02], '#FFFFFF'); // 윗니
 
     requestAnimationFrame(tick);
   }

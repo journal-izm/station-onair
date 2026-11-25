@@ -3,7 +3,7 @@
 //       브라우저 음성(speechSynthesis)일 때는 Anchor2D.setSpeaking(true/false)로 흉내.
 const Anchor2D = (() => {
   let root, mouthOuter, mouthInner, teeth, lidsL, lidsR, browL, browR, headG, bodyG;
-  let ctx = null, analyser = null, buf = null, synthSpeaking = false, open = 0, nextBlink = 2500, blinkT = -9999;
+  let ctx = null, analyser = null, buf = null, audioRef = null, analyserWorks = false, synthSpeaking = false, open = 0, nextBlink = 2500, blinkT = -9999;
   // 방송국별 앵커 (둘 다 원본 캐릭터). M: 남색 배경·긴 머리·시안 넥타이 / K: 보라 배경·짧은 머리·안경·마젠타 스카프
   const THEMES = {
     M: { bg: ['#6E93D6', '#4466A6', '#2A3F72'], suit: ['#22324F', '#121C30'], hair: ['#3B2D5C', '#1E1733'], tie: '#00E5FF', pin: '#A6FF00',
@@ -68,13 +68,16 @@ const Anchor2D = (() => {
     requestAnimationFrame(tick);
   }
   function attachAudio(audioEl) {           // 화면을 한 번 클릭한 뒤 불러야 함 (브라우저 소리 정책)
+    audioRef = audioEl;                       // 소리 분석이 안 되는 환경(OBS 등)에서도 '재생 중'이면 입을 움직이기 위해 기억
+    audioEl.addEventListener('play', () => { if (ctx && ctx.state === 'suspended') ctx.resume().catch(() => {}); });
     try {
       ctx = ctx || new (window.AudioContext || window.webkitAudioContext)();
       const src = ctx.createMediaElementSource(audioEl);
       analyser = ctx.createAnalyser(); analyser.fftSize = 1024;
       buf = new Uint8Array(analyser.fftSize);
       src.connect(analyser); analyser.connect(ctx.destination);
-      if (ctx.state === 'suspended') ctx.resume();
+      if (ctx.state === 'suspended') ctx.resume().catch(() => {});
+      console.info('[앵커] 소리 분석 연결됨, 상태:', ctx.state);
     } catch (e) { console.warn('입 모양 연결 실패 — 소리는 그대로 나감', e); }
   }
   function setSpeaking(v) { synthSpeaking = v; }
@@ -83,9 +86,10 @@ const Anchor2D = (() => {
       analyser.getByteTimeDomainData(buf);
       let sum = 0; for (let i = 0; i < buf.length; i++) { const v = (buf[i] - 128) / 128; sum += v * v; }
       const rms = Math.sqrt(sum / buf.length);
-      if (rms > 0.01) return Math.min(1, rms * 5);
+      if (rms > 0.012) { analyserWorks = true; return Math.min(1, Math.sqrt(rms) * 2.4); }   // 작은 소리에도 입이 잘 벌어지게
     }
-    if (synthSpeaking) {                    // 브라우저 음성은 소리를 읽을 수 없어 흉내
+    const playing = !analyserWorks && audioRef && !audioRef.paused && !audioRef.ended && audioRef.currentTime > 0;
+    if (synthSpeaking || playing) {         // 브라우저 음성이거나 소리 분석이 안 될 때(OBS 등)는 흉내
       const t = performance.now() / 1000;
       return Math.max(0, 0.45 + 0.35 * Math.sin(t * 13) + 0.2 * Math.sin(t * 7.3) - (Math.random() < 0.08 ? 0.6 : 0));
     }
@@ -95,8 +99,8 @@ const Anchor2D = (() => {
     const target = level();
     open += (target - open) * (target > open ? 0.6 : 0.25);
     const o = Math.max(0, Math.min(1, open));
-    mouthOuter.setAttribute('ry', 4 + o * 22); mouthOuter.setAttribute('rx', 30 - o * 4);
-    mouthInner.setAttribute('ry', Math.max(0, o * 18 - 1)); mouthInner.setAttribute('cy', 432 + o * 2);
+    mouthOuter.setAttribute('ry', 4 + o * 28); mouthOuter.setAttribute('rx', 30 - o * 4);
+    mouthInner.setAttribute('ry', Math.max(0, o * 23 - 1)); mouthInner.setAttribute('cy', 432 + o * 2);
     teeth.setAttribute('height', o > 0.35 ? 6 : 0); teeth.setAttribute('y', 424 - o * 10);
     const brow = o > 0.6 ? -4 : 0;
     browL.setAttribute('transform', `translate(0 ${brow})`); browR.setAttribute('transform', `translate(0 ${brow})`);
