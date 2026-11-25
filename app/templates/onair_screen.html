@@ -17,8 +17,8 @@
   #chart { position:absolute; left:900px; top:40px; width:980px; height:820px; border-radius:16px; background:#0B1120;
            border:2px solid #24304A; padding:40px; box-sizing:border-box }
   #chart h2 { font-size:44px; margin:0 0 40px } #chart .row { display:flex; align-items:center; gap:24px; margin:34px 0; font-size:34px; font-weight:800 }
-  #chart .nm { width:250px } #chart .b { height:70px; border-radius:10px; transition:width .8s } #chart .v { font-variant-numeric:tabular-nums }
-  #chart .flag { font-size:26px; background:#FFB020; color:#1a1200; border-radius:8px; padding:2px 12px; margin-left:12px }
+  #chart .nm { width:250px; flex:none; white-space:nowrap } #chart .v { flex:none } #chart .b { height:70px; border-radius:10px; transition:width .8s } #chart .v { font-variant-numeric:tabular-nums }
+  #chart .flag { white-space:nowrap; flex:none; font-size:26px; background:#FFB020; color:#1a1200; border-radius:8px; padding:2px 12px; margin-left:12px }
   #live { position:absolute; right:52px; top:52px; background:#E0483E; color:#fff; font-weight:800; font-size:30px; padding:6px 18px;
           border-radius:10px; z-index:3 }
   #headline { position:absolute; left:0; right:0; top:890px; height:100px; background:#E0483E; display:flex; align-items:center;

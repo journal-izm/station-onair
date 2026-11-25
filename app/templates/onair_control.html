@@ -2,7 +2,7 @@
 <body>{% include '_nav.html' %}
 <main>
   <div class="panel" style="margin-bottom:18px">
-    <div class="row"><div><div class="muted">송출 상태</div><div class="kpi" id="status">-</div></div>
+    <div class="row"><div><div class="muted">송출 상태</div><div class="kpi" id="onairStatus">-</div></div>
       <div style="margin-left:28px"><div class="muted">현재 구간</div><div class="kpi" id="cue" style="font-size:24px">-</div></div>
       <div style="margin-left:28px"><div class="muted">방송 경과</div><div class="kpi" id="elapsed">00:00</div></div>
       <div style="margin-left:28px"><div class="muted">당선자</div><div class="kpi" id="winner" style="font-size:24px">-</div></div>
@@ -22,7 +22,9 @@ const mmss = s => String(Math.floor(s / 60)).padStart(2, '0') + ':' + String(Mat
 async function ctl(action) { try { await api('POST', '/api/onair/control', { action }); load(); } catch (e) { toast(e.message); } }
 async function load() {
   const s = await api('GET', '/api/onair/status');
-  status.textContent = s.status; cue.textContent = s.current_cue ? `${s.current_cue}. ${s.cue_title}` : '-';
+  const $ = id => document.getElementById(id);
+  $('onairStatus').textContent = s.status; $('onairStatus').style.color = {ON_AIR: 'var(--ok)', PAUSED: 'var(--warn)', ENDED: 'var(--c2)'}[s.status] || 'var(--text)';
+  cue.textContent = s.current_cue ? `${s.current_cue}. ${s.cue_title}` : '-';
   elapsed.textContent = mmss(s.elapsed || 0); winner.textContent = s.winner_name || '-';
   queue.innerHTML = s.queue_items.map(q => `<tr><td>${q.queue_id}</td><td>${esc(q.title)}</td><td>${esc(q.region_name || '')}</td><td>${q.media}</td><td><span class="st ${q.status}">${q.status}</span></td></tr>`).join('');
   const c = await api('GET', '/api/onair/cuesheet');
