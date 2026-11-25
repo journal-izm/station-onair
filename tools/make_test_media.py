@@ -41,8 +41,28 @@ def font() -> str:
     sys.exit("한글 글꼴을 찾지 못했습니다. FONTS 목록에 글꼴 파일 경로를 추가하세요.")
 
 
+def find_ffmpeg() -> str | None:
+    """PATH에 없으면 winget이 설치하는 자리도 찾아봄 (설치 직후 터미널이 새 PATH를 모를 때)."""
+    exe = shutil.which("ffmpeg")
+    if exe:
+        return exe
+    import os
+    local = Path(os.environ.get("LOCALAPPDATA", ""))
+    for pattern in ("Microsoft/WinGet/Links/ffmpeg.exe", "Microsoft/WinGet/Packages/Gyan.FFmpeg*/**/bin/ffmpeg.exe"):
+        hits = sorted(local.glob(pattern)) if local.exists() else []
+        if hits:
+            return str(hits[0])
+    for p in ("C:/ffmpeg/bin/ffmpeg.exe", "C:/Program Files/ffmpeg/bin/ffmpeg.exe"):
+        if Path(p).exists():
+            return p
+    return None
+
+
+FFMPEG = find_ffmpeg()
+
+
 def run(args):
-    r = subprocess.run(["ffmpeg", "-hide_banner", "-loglevel", "error", "-y", *args])
+    r = subprocess.run([FFMPEG, "-hide_banner", "-loglevel", "error", "-y", *args])
     if r.returncode:
         sys.exit("ffmpeg 오류 — 위 메시지를 확인하세요")
 
@@ -62,8 +82,9 @@ def video(path: Path, sec: int, bg: str, big: str, small: str, f: str, countdown
 
 
 def main():
-    if not shutil.which("ffmpeg"):
+    if not FFMPEG:
         sys.exit("ffmpeg이 없습니다. Windows: winget install Gyan.FFmpeg (설치 후 터미널을 새로 여세요)")
+    print(f"ffmpeg: {FFMPEG}")
     OUT.mkdir(parents=True, exist_ok=True)
     f = font()
     made = []
