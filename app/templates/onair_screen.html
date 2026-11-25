@@ -262,7 +262,10 @@ listen('/api/onair/stream', {
                           if (d.action === 'skip' || d.action === 'reset') { abortNow = true; for (const el of [$('fullv'), $('voice'), $('avatar')]) el.pause();
                             if ('speechSynthesis' in window) speechSynthesis.cancel(); } }
 }, { keep: true });   // 송출 화면은 숨겨져도 연결 유지 (OBS가 캡처 중일 수 있음)
-$('gate').onclick = () => { $('gate').style.display = 'none'; ANCHOR.attachAudio($('voice')); loop(); };
+function startScreen() { $('gate').style.display = 'none'; ANCHOR.attachAudio($('voice')); loop(); }
+$('gate').onclick = startScreen;
+// OBS 브라우저 소스는 클릭 없이도 소리 재생이 허용됨 → 자동 시작. 주소에 ?autostart=1 을 붙여도 자동 시작
+if (/OBS\//.test(navigator.userAgent) || new URLSearchParams(location.search).get('autostart') === '1') startScreen();
 </script>
 </body>
 </html>

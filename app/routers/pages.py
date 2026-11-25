@@ -1,4 +1,5 @@
 """화면(HTML) — SCR-01-01 ~ SCR-07-02. 데이터는 화면 안의 자바스크립트가 API로 가져옴."""
+from urllib.parse import quote
 from pathlib import Path
 
 from fastapi import APIRouter, Request
@@ -25,7 +26,8 @@ def _user(request: Request):
 def page(request: Request, name: str, roles: tuple | None = None, **ctx):
     user = _user(request)
     if roles is not None and (not user or user.role not in roles):
-        return RedirectResponse("/login")          # TC-RQ-02: 권한 없는 화면 → 로그인
+        nxt = request.url.path + (("?" + request.url.query) if request.url.query else "")
+        return RedirectResponse("/login?next=" + quote(nxt))   # TC-RQ-02: 권한 없는 화면 → 로그인 (로그인 뒤 원래 화면으로)
     return templates.TemplateResponse(request, name, {"station": config.STATION_NAME, "code": config.STATION_CODE,
                                                       "other": config.OTHER_STATION_URL, "user": user, **ctx})
 

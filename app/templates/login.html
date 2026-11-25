@@ -17,7 +17,8 @@ document.getElementById('f').addEventListener('submit', async e => {
   e.preventDefault();
   try {
     const u = await api('POST', '/api/auth/login', { login_id: id.value.trim(), password: pw.value });
-    location.href = u.role === 'DESK' ? '/desk' : '/reporter';
+    const nxt = new URLSearchParams(location.search).get('next');      // 로그인 전에 열려던 화면 (예: /onair/screen)
+    location.href = (nxt && nxt.startsWith('/') && !nxt.startsWith('//')) ? nxt : (u.role === 'DESK' ? '/desk' : '/reporter');
   } catch (er) { document.getElementById('err').textContent = er.message; }
 });
 </script></body></html>
