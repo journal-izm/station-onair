@@ -20,41 +20,47 @@ def _load_dotenv(path: Path) -> None:
             os.environ.setdefault(k.strip(), v.strip().strip('"').strip("'"))
 
 
-_load_dotenv(BASE_DIR / os.getenv("ENV_FILE", ".env"))
+_load_dotenv(BASE_DIR / (os.getenv("ENV_FILE") or ".env"))
+
+
+def _env(name: str, default: str = "") -> str:
+    """환경 변수 읽기. .env에 'NAME=' 처럼 값이 비어 있으면 기본값을 씀."""
+    v = os.getenv(name)
+    return v.strip() if v and v.strip() else default
 
 
 def _bool(v) -> bool:
     return str(v).lower() in ("1", "true", "yes", "on")
 
 
-STATION_CODE = os.getenv("STATION_CODE", "M")
-STATION_NAME = os.getenv("STATION_NAME", f"{STATION_CODE} 방송국")
-OTHER_STATION_URL = os.getenv("OTHER_STATION_URL", "")
-DB_URL = os.getenv("STATION_DB_URL", f"sqlite:///{BASE_DIR / ('station_' + STATION_CODE.lower() + '.db')}")
-SECRET_KEY = os.getenv("SECRET_KEY", "dev-secret-change-me")
-DEFAULT_PASSWORD = os.getenv("DEFAULT_PASSWORD", "onair2026")   # seed가 계정 5개에 넣는 처음 비밀번호
+STATION_CODE = _env("STATION_CODE", "M")
+STATION_NAME = _env("STATION_NAME", f"{STATION_CODE} 방송국")
+OTHER_STATION_URL = _env("OTHER_STATION_URL", "")
+DB_URL = _env("STATION_DB_URL", f"sqlite:///{BASE_DIR / ('station_' + STATION_CODE.lower() + '.db')}")
+SECRET_KEY = _env("SECRET_KEY", "dev-secret-change-me")
+DEFAULT_PASSWORD = _env("DEFAULT_PASSWORD", "onair2026")   # seed가 계정 5개에 넣는 처음 비밀번호
 
-NEC_BASE_URL = os.getenv("NEC_BASE_URL", "http://localhost:8000").rstrip("/")
-NEC_API_KEY = os.getenv("NEC_API_KEY", "")
-ELECTION_ID = os.getenv("ELECTION_ID", "HANBIT-2026")
-SYNC_INTERVAL_SEC = float(os.getenv("SYNC_INTERVAL_SEC", "5"))
-SYNC_ENABLED = _bool(os.getenv("SYNC_ENABLED", "true"))
+NEC_BASE_URL = _env("NEC_BASE_URL", "http://localhost:8000").rstrip("/")
+NEC_API_KEY = _env("NEC_API_KEY", "")
+ELECTION_ID = _env("ELECTION_ID", "HANBIT-2026")
+SYNC_INTERVAL_SEC = float(_env("SYNC_INTERVAL_SEC", "5"))
+SYNC_ENABLED = _bool(_env("SYNC_ENABLED", "true"))
 
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
-LLM_MODEL = os.getenv("LLM_MODEL", "gpt-6-luna")
-LLM_TIMEOUT_SEC = float(os.getenv("LLM_TIMEOUT_SEC", "40"))
-LLM_FALLBACK = os.getenv("LLM_FALLBACK", "template")    # template = AI 실패 시 틀 기사 / off = 실패로 기록만
-EMBED_MODEL = os.getenv("EMBED_MODEL", "text-embedding-3-small")
-TTS_MODEL = os.getenv("TTS_MODEL", "gpt-4o-mini-tts")
-TTS_VOICE = os.getenv("TTS_VOICE", "alloy")
-TTS_INSTRUCTIONS = os.getenv("TTS_INSTRUCTIONS", "차분하고 또렷한 한국어 뉴스 앵커 말투로 읽어 주세요.")
+OPENAI_API_KEY = _env("OPENAI_API_KEY", "")
+LLM_MODEL = _env("LLM_MODEL", "gpt-6-luna")
+LLM_TIMEOUT_SEC = float(_env("LLM_TIMEOUT_SEC", "40"))
+LLM_FALLBACK = _env("LLM_FALLBACK", "template")    # template = AI 실패 시 틀 기사 / off = 실패로 기록만
+EMBED_MODEL = _env("EMBED_MODEL", "text-embedding-3-small")
+TTS_MODEL = _env("TTS_MODEL", "gpt-4o-mini-tts")
+TTS_VOICE = _env("TTS_VOICE", "alloy")
+TTS_INSTRUCTIONS = _env("TTS_INSTRUCTIONS", "차분하고 또렷한 한국어 뉴스 앵커 말투로 읽어 주세요.")
 
-AVATAR_PROVIDER = os.getenv("AVATAR_PROVIDER", "none")   # none / mock (실제 서비스는 app/workers/avatar.py에 추가)
-AVATAR_TIMEOUT_SEC = float(os.getenv("AVATAR_TIMEOUT_SEC", "90"))
-AVATAR_MOCK_DELAY_SEC = float(os.getenv("AVATAR_MOCK_DELAY_SEC", "20"))
+AVATAR_PROVIDER = _env("AVATAR_PROVIDER", "none")   # none / mock (실제 서비스는 app/workers/avatar.py에 추가)
+AVATAR_TIMEOUT_SEC = float(_env("AVATAR_TIMEOUT_SEC", "90"))
+AVATAR_MOCK_DELAY_SEC = float(_env("AVATAR_MOCK_DELAY_SEC", "20"))
 
-DEMO_MODE = _bool(os.getenv("DEMO_MODE", "false"))
-DEMO_AUTO_APPROVE = _bool(os.getenv("DEMO_AUTO_APPROVE", "false"))   # 시연 모드에서 자동 송고·승인 (사람 검수 생략 → 시연 전용)
+DEMO_MODE = _bool(_env("DEMO_MODE", "false"))
+DEMO_AUTO_APPROVE = _bool(_env("DEMO_AUTO_APPROVE", "false"))   # 시연 모드에서 자동 송고·승인 (사람 검수 생략 → 시연 전용)
 
 MEDIA_DIR = APP_DIR / "static" / "media"
 TTS_DIR = APP_DIR / "static" / "tts"
