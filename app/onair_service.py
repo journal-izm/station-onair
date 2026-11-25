@@ -65,8 +65,15 @@ def pop_item() -> dict | None:
         if st:
             st.current_queue_id = q.queue_id
         db.commit()
+        from .models import CountEvent, Region
+        ev = db.get(CountEvent, a.event_id)
+        reg = db.get(Region, q.region_code)
         out = {"queue_id": q.queue_id, "article_id": a.article_id, "title": a.title, "script": a.anchor_script,
-               "region_code": q.region_code, "event_type": q.event_type, "candidate_id": _event_candidate(db, a)}
+               "region_code": q.region_code, "region_name": reg.name if reg else q.region_code,
+               "event_type": q.event_type, "candidate_id": ev.candidate_id if ev else None,
+               # 기사를 쓸 때의 개표 수치 — 송출 화면이 '기사 관련 차트'를 이 숫자로 그림 (기사와 화면 숫자가 같게)
+               "event": {**(ev.payload if ev else {}), "seq": ev.seq if ev else None,
+                         "detected_at": ev.detected_at.strftime("%H:%M:%S") if ev else None}}
         av = db.get(AvatarVideo, q.avatar_id) if q.avatar_id else None
         tts = db.get(TtsAudio, q.tts_id) if q.tts_id else None
         if av and av.status == "READY":
