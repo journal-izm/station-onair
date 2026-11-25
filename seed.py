@@ -84,10 +84,12 @@ def run(reset: bool = False, quiet: bool = False):
         for i, (mtype, cid, title, fname, dur) in enumerate(MEDIA, 1):
             db.merge(MediaAsset(media_id=i, media_type=mtype, candidate_id=cid, title=title, file_path=f"/static/media/{fname}", duration_sec=dur))
             media_ids[(mtype, cid)] = i
+        db.flush()                              # 영상 목록을 먼저 저장해야 큐시트가 가리킬 수 있음 (외래 키)
         for order, start, dur, seg, title, trig, cid in CUES:
             mid = media_ids.get(({"ANCHOR": "OPENING"}.get(seg, seg), cid))
             db.merge(CueSheet(cue_id=order, order_no=order, segment_type=seg, title=title, planned_start_sec=start, duration_sec=dur,
                               media_id=mid, trigger_type=trig, status="READY", candidate_id=cid))
+        db.flush()                              # 큐시트를 먼저 저장해야 송출 상태가 가리킬 수 있음
         if not db.get(OnairState, 1):
             db.add(OnairState(id=1, status="STANDBY"))
         db.commit()
