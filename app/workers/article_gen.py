@@ -29,6 +29,11 @@ def call_llm(messages: list[dict]) -> str:
     return r.choices[0].message.content or ""
 
 
+def _search(query: str, ids: list[int] | None) -> list[dict]:
+    with SessionLocal() as db2:
+        return rag.search(db2, query, ids, k=3)
+
+
 def assign_reporter(db) -> int:
     """BR-05 — 마지막 배정 기자 다음 사람, 미처리 3건 이상은 건너뜀."""
     reporters = [u.user_id for u in db.query(User).filter_by(role="REPORTER").order_by(User.user_id)]
@@ -50,7 +55,8 @@ async def generate(event_id: int) -> int | None:
             f = writer.facts(event, regions, cands)
             ids = [x for x in (ev.candidate_id, ev.payload.get("prev_leader")) if x]
             query = f"{f['event_ko']} {f['leader_name']} 이력 공약"
-            docs = rag.search(db, query, ids or None, k=3)
+            # 벡터 검색은 OpenAI 임베딩을 부르므로 별도 스레드에서 (서버 전체가 멈추지 않게)
+            docs = await asyncio.to_thread(_search, query, ids or None)
             tpl = db.query(PromptTemplate).filter_by(event_type=ev.event_type, active=True).first()
             art, model = None, "template"
             if config.OPENAI_API_KEY:

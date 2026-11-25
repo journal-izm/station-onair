@@ -26,7 +26,21 @@ log = logging.getLogger("station")
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    tasks.set_loop(asyncio.get_running_loop())
+    loop = asyncio.get_running_loop()
+    tasks.set_loop(loop)
+    # Windows에서 브라우저가 영상·음악 요청을 중간에 끊으면 'WinError 10054' 오류가 찍힘 — 무해하므로 숨김
+    default_handler = loop.get_exception_handler()
+    def quiet_reset(lp, context):
+        if isinstance(context.get("exception"), (ConnectionResetError, ConnectionAbortedError)):
+            return
+        if default_handler:
+            default_handler(lp, context)
+        else:
+            lp.default_exception_handler(context)
+    loop.set_exception_handler(quiet_reset)
+    # 벡터 검색(Chroma) 준비는 처음 한 번 몇 초 걸림 → 미리 스레드에서 (첫 기사 때 멈춤 방지)
+    from .rag import _chroma
+    loop.run_in_executor(None, _chroma)
     config.require("SECRET_KEY", "DEFAULT_PASSWORD", *(["NEC_API_KEY"] if config.SYNC_ENABLED else []))
     init_db()
     for d in (config.MEDIA_DIR, config.TTS_DIR, config.AVATAR_DIR):

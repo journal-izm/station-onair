@@ -7,6 +7,7 @@
 from __future__ import annotations
 
 import logging
+import threading
 
 from .. import config
 from ..logic.retrieve import keyword_search
@@ -22,8 +23,16 @@ def _docs_dicts(db) -> list[dict]:
              "content": d.content, "source": d.source} for d in db.query(CandidateDoc).all()]
 
 
+_init_lock = threading.Lock()
+
+
 def _chroma():
-    """Chroma 컬렉션 (없으면 None)."""
+    """Chroma 컬렉션 (없으면 None). 여러 스레드가 동시에 불러도 한 번만 준비."""
+    with _init_lock:
+        return _chroma_once()
+
+
+def _chroma_once():
     global _collection, _disabled
     if _collection is not None or _disabled:
         return _collection
