@@ -8,6 +8,9 @@
           <option value="APPROVED">출고됨</option><option value="">전체</option></select><span class="sp"></span><span class="muted" id="cnt"></span></div>
       <table class="t"><thead><tr><th>번호</th><th>제목</th><th>상태</th><th>시각</th></tr></thead><tbody id="list"></tbody></table>
     </section>
+    <section class="panel" id="hint"><h2>기사 편집·송고 <span class="muted">(SCR-04-02)</span></h2>
+      <p class="muted">왼쪽 목록에서 기사를 누르면 여기에서 고치고 송고할 수 있습니다.<br>
+      기사는 AI가 개표 상황이 생길 때마다 초안을 써서 기자 1→2→3 차례로 배정합니다. 목록이 비어 있으면 선관위 개표가 시작됐는지 확인하세요.</p></section>
     <section class="panel" id="editor" style="display:none"><h2>기사 편집·송고 <span class="muted">(SCR-04-02)</span> <span id="st" class="st"></span></h2>
       <div id="reject" style="display:none;background:#3A1E25;border-radius:8px;padding:10px;margin-bottom:8px"></div>
       <label>제목</label><input id="title" maxlength="100">
@@ -30,7 +33,7 @@ async function loadList() {
 }
 async function open_(id) {
   cur = await api('GET', '/api/articles/' + id);
-  editor.style.display = 'block'; st.textContent = cur.status; st.className = 'st ' + cur.status;
+  editor.style.display = 'block'; hint.style.display = 'none'; st.textContent = cur.status; st.className = 'st ' + cur.status;
   title.value = cur.title; body.value = cur.body; script.value = cur.anchor_script; countLen();
   const rj = cur.reviews.filter(r => r.action === 'REJECT').pop();
   reject.style.display = cur.status === 'REJECTED' && rj ? 'block' : 'none';
