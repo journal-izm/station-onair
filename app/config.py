@@ -17,7 +17,8 @@ def _load_dotenv(path: Path) -> None:
         line = line.strip()
         if line and not line.startswith("#") and "=" in line:
             k, v = line.split("=", 1)
-            os.environ.setdefault(k.strip(), v.strip().strip('"').strip("'"))
+            v = v.split(" #", 1)[0].strip().strip('"').strip("'")     # 값 뒤 주석은 버림
+            os.environ.setdefault(k.strip(), v)
 
 
 _load_dotenv(BASE_DIR / (os.getenv("ENV_FILE") or ".env"))
@@ -36,7 +37,7 @@ def _bool(v) -> bool:
 STATION_CODE = _env("STATION_CODE", "M")
 STATION_NAME = _env("STATION_NAME", f"{STATION_CODE} 방송국")
 OTHER_STATION_URL = _env("OTHER_STATION_URL", "")
-DB_URL = _env("STATION_DB_URL", f"sqlite:///{BASE_DIR / ('station_' + STATION_CODE.lower() + '.db')}")
+DB_URL = _env("STATION_DB_URL", f"sqlite:///{(BASE_DIR / ('station_' + STATION_CODE.lower() + '.db')).as_posix()}")
 SECRET_KEY = _env("SECRET_KEY", "dev-secret-change-me")
 DEFAULT_PASSWORD = _env("DEFAULT_PASSWORD", "onair2026")   # seed가 계정 5개에 넣는 처음 비밀번호
 
@@ -73,3 +74,7 @@ def require(*names: str) -> None:
     missing = [n for n in names if not os.getenv(n)]
     if missing:
         raise SystemExit(f"[설정 오류] .env에 다음 값이 없습니다: {', '.join(missing)}  (.env.example 참고)")
+
+
+if "://" not in DB_URL:
+    raise SystemExit(f"[설정 오류] DB 주소가 이상합니다: {DB_URL!r} — .env의 DB 주소 칸을 비우거나 sqlite:///파일이름.db 형식으로 적으세요")
