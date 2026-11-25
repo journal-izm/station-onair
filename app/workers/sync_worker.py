@@ -25,6 +25,7 @@ class SyncState:
         self.last_error: str | None = None
         self.running = False
         self.election_loaded = False
+        self.nec_reset = False          # 선관위가 초기화돼 seq가 줄어든 것을 알아챔
 
 
 state = SyncState()
@@ -138,6 +139,11 @@ async def run_once() -> dict:
                 received, new_ids = 0, []
                 while True:
                     data = await nec_client.results(since)
+                    if since > 0 and data.get("last_seq", 0) < since:
+                        # 선관위가 초기화됨 (seq가 처음부터 다시 시작) — 방송국도 초기화해야 새 개표를 받음
+                        state.nec_reset = True
+                        raise nec_client.NecError(f"선관위가 초기화되었습니다 (선관위 seq {data.get('last_seq', 0)} < 방송국 seq {since}). 수신 모니터에서 '방송국 개표 초기화'를 누르세요")
+                    state.nec_reset = False
                     rows = data.get("regions", [])
                     ids, since2 = apply_rows(db, rows)
                     received += len(rows)
@@ -175,3 +181,18 @@ async def loop_forever():
             state.fail_count += 1
         # 실패하면 조금씩 늦춰 다시 시도 (최대 30초) — REQ-03-03
         await asyncio.sleep(config.SYNC_INTERVAL_SEC if state.fail_count == 0 else min(30, config.SYNC_INTERVAL_SEC * (1 + state.fail_count)))
+
+
+def reset_station_data(db: Session) -> dict:
+    """방송국 개표 데이터 초기화 — 결과·이벤트·기사·검토·대기열·음성 (계정·후보 자료·큐시트·프롬프트는 그대로)."""
+    from ..models import Article, ArticleReview, AvatarVideo, OnairQueue, OnairState, TtsAudio
+    counts = {}
+    st = db.get(OnairState, 1)
+    if st:
+        st.current_queue_id, st.current_cue_id, st.status = None, None, "STANDBY"
+        db.flush()
+    for t in (OnairQueue, TtsAudio, AvatarVideo, ArticleReview, Article, CountEvent, SyncLog, ResultLatest):
+        counts[t.__tablename__] = db.query(t).delete()
+    db.commit()
+    state.nec_reset, state.fail_count, state.last_error = False, 0, None
+    return counts

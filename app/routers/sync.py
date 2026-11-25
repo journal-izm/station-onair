@@ -22,7 +22,7 @@ def status(db: Session = Depends(get_db)):
         "state": "OK" if st.fail_count == 0 else "FAIL",
         "last_seq": last_seq,
         "last_at": st.last_ok_at.strftime("%H:%M:%S") if st.last_ok_at else None,
-        "fail_count": st.fail_count, "last_error": st.last_error,
+        "fail_count": st.fail_count, "last_error": st.last_error, "nec_reset": st.nec_reset,
         "last_request_at": last.requested_at.strftime("%H:%M:%S") if last else None,
         "ai": article_gen.stats,
         "recent_events": [{"event_id": e.event_id, "type": e.event_type, "region": e.region_code,
@@ -36,3 +36,16 @@ def status(db: Session = Depends(get_db)):
 @router.post("/run", summary="API-03-02 즉시 수신")
 async def run_now():
     return await sync_worker.run_once()
+
+
+@router.post("/reset", summary="방송국 개표 데이터 초기화 (선관위를 초기화한 뒤)")
+async def reset_station(db: Session = Depends(get_db)):
+    """선관위 시뮬레이터를 초기화했으면 방송국도 결과·이벤트·기사·대기열을 비워야 새 개표를 받습니다."""
+    from .. import onair_service
+    async with sync_worker._lock:
+        counts = sync_worker.reset_station_data(db)
+    onair_service.control("reset")
+    from ..sse import broker
+    broker.publish("public", "results.updated", {"last_seq": 0})
+    broker.publish("newsroom", "station.reset", {})
+    return {"ok": True, "deleted": counts}

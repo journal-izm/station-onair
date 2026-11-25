@@ -6,7 +6,11 @@
       <div class="kpi" id="state">-</div>
       <p>마지막 성공 <b id="lastAt">-</b> · seq <b id="seq">-</b> · 실패 <b id="fail">0</b>회</p>
       <p class="muted" id="err" style="color:var(--bad)"></p>
+      <div id="resetBox" style="display:none;background:#3A2A10;border:1px solid var(--warn);border-radius:10px;padding:12px;margin-bottom:12px">
+        <b style="color:var(--warn)">선관위가 초기화되었습니다</b><br><span class="muted">방송국에 남은 지난 개표·기사를 비워야 새 개표를 받습니다.</span><br>
+        <button class="bad" id="resetBtn" style="margin-top:8px">방송국 개표 초기화</button></div>
       <button class="primary" id="run">지금 바로 받기</button>
+      <button id="resetBtn2" style="margin-left:6px">방송국 개표 초기화</button>
       <h2 style="margin-top:18px">AI 기사 생성</h2><p id="ai" class="muted"></p>
     </section>
     <section class="panel"><h2>감지한 이벤트 (최근 15)</h2><table class="t"><thead><tr><th>시각</th><th>이벤트</th><th>지역</th><th>개표율</th></tr></thead><tbody id="ev"></tbody></table></section>
@@ -16,12 +20,18 @@
 <script>
 async function load() {
   const d = await api('GET', '/api/sync/status');
+  resetBox.style.display = d.nec_reset ? 'block' : 'none';
   state.textContent = d.state === 'OK' ? '● 정상' : '● 실패'; state.style.color = d.state === 'OK' ? 'var(--ok)' : 'var(--bad)';
   lastAt.textContent = d.last_at || '-'; seq.textContent = d.last_seq; fail.textContent = d.fail_count; err.textContent = d.last_error || '';
   ai.textContent = `AI 성공 ${d.ai.ai_ok} · 실패 ${d.ai.ai_fail} · 틀 기사 ${d.ai.template}` + (d.ai.last_error ? ` · 최근 오류: ${d.ai.last_error}` : '');
   ev.innerHTML = d.recent_events.map(e => `<tr><td>${e.at}</td><td>${TYPE_KO[e.type] || e.type}</td><td>${esc(e.region_name || e.region)}</td><td>${e.rate}%</td></tr>`).join('');
   logs.innerHTML = d.logs.map(l => `<tr><td>${l.at}</td><td>${l.since}</td><td>${l.rows}</td><td style="color:${l.status === 'OK' ? 'var(--ok)' : 'var(--bad)'}">${l.status}${l.error ? ' ' + esc(l.error) : ''}</td></tr>`).join('');
 }
+async function resetStation() {
+  if (!confirm('방송국의 개표 결과·이벤트·기사·방송 대기열을 모두 지울까요? (계정·후보 자료·큐시트는 그대로)')) return;
+  const r = await api('POST', '/api/sync/reset'); toast('방송국 개표 데이터를 비웠습니다'); load();
+}
+resetBtn.onclick = resetStation; resetBtn2.onclick = resetStation;
 run.onclick = async () => { const r = await api('POST', '/api/sync/run'); toast(`${r.received}줄 받음 · 새 이벤트 ${r.new_events}`); load(); };
 load(); setInterval(load, 3000);
 </script></body></html>
