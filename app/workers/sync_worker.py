@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import asyncio
+import time
 import logging
 from datetime import datetime
 
@@ -13,6 +14,8 @@ from ..db import SessionLocal
 from ..logic import results as R
 from ..models import Candidate, CountEvent, Region, ResultLatest, SyncLog
 from ..sse import broker
+
+from .. import timing
 
 log = logging.getLogger("sync")
 FLAG = {"WIN_LIKELY": "LIKELY", "WIN_SURE": "SURE", "ELECTED": "ELECTED"}
@@ -130,6 +133,7 @@ def apply_rows(db: Session, rows: list[dict]) -> tuple[list[int], int]:
 
 async def run_once() -> dict:
     """API-03-02 즉시 수신과 5초 루프가 같이 씀."""
+    t0 = time.perf_counter()
     async with _lock:
         with SessionLocal() as db:
             _, since = snapshot(db)
@@ -160,6 +164,9 @@ async def run_once() -> dict:
                 received, new_ids = 0, []
             db.add(logrow)
             db.commit()
+        ms = (time.perf_counter() - t0) * 1000
+        if received and timing.ENABLED:
+            log.info("⏱ 개표 수신 %d건 · 새 이벤트 %d건 · %.0fms", received, len(new_ids), ms)
         if received:
             broker.publish("public", "results.updated", {"last_seq": since})
             broker.publish("onair", "results.updated", {"last_seq": since})

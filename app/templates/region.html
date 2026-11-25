@@ -19,5 +19,5 @@ async function load() {
   const list = await api('GET', '/api/public/articles?region=' + CODE);
   if (list.length) feed.innerHTML = list.map(a => `<li class="open"><div class="t">${esc(a.title)}</div><div class="m">${a.approved_at}</div><div class="b">${esc(a.body)}</div></li>`).join('');
 }
-load(); listen('/api/public/stream', { 'results.updated': load, 'article.published': load });
+load(); listen('/api/public/stream', { 'results.updated': load, 'article.published': load }, { onResume: load });
 </script></body></html>

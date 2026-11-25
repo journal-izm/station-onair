@@ -32,6 +32,6 @@ async function load() {
     <td>${x.media_needed.length ? (x.media_missing.length ? `<span style="color:var(--warn)">⚠ 없음: ${x.media_missing.map(f => f.split('/').pop()).join(', ')}</span>` : '<span style="color:var(--ok)">준비됨</span>') : '<span class="muted">대기열</span>'}</td>
     <td><span class="st">${x.status}</span></td></tr>`).join('');
 }
-load(); setInterval(load, 2000);
+load(); every(load, 2000);
 listen('/api/onair/stream', { 'cue.changed': load, 'onair.control': load, 'queue.ready': load });
 </script></body></html>

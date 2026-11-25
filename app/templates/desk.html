@@ -45,7 +45,7 @@ app.onclick = async () => { try { const r = await api('POST', `/api/desk/article
   toast(`출고했습니다 (대기열 #${r.queue_id})`); comment.value = ''; open_(cur.article_id); } catch (e) { toast(e.message); loadList(); } };
 rej.onclick = async () => { try { await api('POST', `/api/desk/articles/${cur.article_id}/reject`, { comment: comment.value });
   toast('반려했습니다'); comment.value = ''; open_(cur.article_id); } catch (e) { toast(e.message); } };
-filter.onchange = loadList; loadList(); setInterval(loadList, 5000);
+filter.onchange = loadList; loadList(); every(loadList, 5000);
 listen('/api/newsroom/stream', { 'article.submitted': () => { toast('새 송고 기사가 도착했습니다'); loadList(); },
   'article.approved': loadList, 'tts.failed': d => toast(`⚠ 기사 ${d.article_id} 음성 생성 실패 — 방송에서 건너뜀 (웹 게시는 유지)`, 6000) });
 </script></body></html>

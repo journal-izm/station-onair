@@ -55,5 +55,5 @@ loadList();
 api('GET', '/api/auth/me').then(me => listen('/api/newsroom/stream', {
   'article.assigned': d => { if (d.reporter_id === me.user_id) { toast('새 초안이 배정됐습니다'); loadList(); } },
   'article.rejected': d => { if (d.reporter_id === me.user_id) { toast('반려된 기사가 있습니다'); loadList(); } },
-  'article.approved': loadList }));
+  'article.approved': loadList }, { onResume: loadList }));
 </script></body></html>

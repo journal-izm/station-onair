@@ -261,7 +261,7 @@ listen('/api/onair/stream', {
                           if (d.action === 'start' || d.action === 'reset') startedAt = null;
                           if (d.action === 'skip' || d.action === 'reset') { abortNow = true; for (const el of [$('fullv'), $('voice'), $('avatar')]) el.pause();
                             if ('speechSynthesis' in window) speechSynthesis.cancel(); } }
-});
+}, { keep: true });   // 송출 화면은 숨겨져도 연결 유지 (OBS가 캡처 중일 수 있음)
 $('gate').onclick = () => { $('gate').style.display = 'none'; ANCHOR.attachAudio($('voice')); loop(); };
 </script>
 </body>

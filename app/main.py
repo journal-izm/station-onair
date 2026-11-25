@@ -14,7 +14,7 @@ from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.sessions import SessionMiddleware
 
-from . import config, tasks
+from . import config, tasks, timing
 from .db import SessionLocal, init_db
 from .models import User
 from .routers import articles, auth, desk, onair, pages, public, sync
@@ -52,7 +52,9 @@ async def lifespan(app: FastAPI):
         seed.run(quiet=True)
         log.info("초기 데이터(seed) 넣음")
     task = asyncio.create_task(sync_worker.loop_forever()) if config.SYNC_ENABLED else None
+    watcher = asyncio.create_task(timing.watch_loop())
     yield
+    watcher.cancel()
     if task:
         task.cancel()
 
@@ -61,6 +63,7 @@ app = FastAPI(title=f"station-onair · {config.STATION_NAME}", version="1.0", li
               description="실시간 개표 수신 · AI 기사 초안 · 기자 송고 · 데스크 승인 · 실시간 웹 · 20분 송출")
 app.add_middleware(SessionMiddleware, secret_key=config.SECRET_KEY, session_cookie=f"onair_{config.STATION_CODE.lower()}",
                    same_site="lax", max_age=60 * 60 * 12)
+timing.install_middleware(app)
 app.mount("/static", StaticFiles(directory=str(config.APP_DIR / "static")), name="static")
 for r in (auth.router, sync.router, articles.router, desk.router, public.router, onair.router, pages.router):
     app.include_router(r)

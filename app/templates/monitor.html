@@ -33,5 +33,5 @@ async function resetStation() {
 }
 resetBtn.onclick = resetStation; resetBtn2.onclick = resetStation;
 run.onclick = async () => { const r = await api('POST', '/api/sync/run'); toast(`${r.received}줄 받음 · 새 이벤트 ${r.new_events}`); load(); };
-load(); setInterval(load, 3000);
+load(); every(load, 3000);
 </script></body></html>

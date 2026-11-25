@@ -35,5 +35,6 @@ async function loadFeed(newId) {
   feed.querySelectorAll('li').forEach(li => li.addEventListener('click', () => li.classList.toggle('open')));
 }
 loadResults(); loadFeed();
-listen('/api/public/stream', { 'results.updated': loadResults, 'article.published': d => loadFeed(d.article_id) });
+listen('/api/public/stream', { 'results.updated': loadResults, 'article.published': d => loadFeed(d.article_id) },
+       { onResume: () => { loadResults(); loadFeed(); } });
 </script></body></html>

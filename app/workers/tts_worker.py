@@ -19,6 +19,8 @@ from ..models import Article, AvatarVideo, OnairQueue, TtsAudio
 from ..sse import broker
 from . import avatar
 
+from ..timing import Steps
+
 log = logging.getLogger("tts")
 
 
@@ -49,7 +51,10 @@ async def make_tts(article: Article) -> TtsAudio | None:
     for attempt in (1, 2):                      # BR-08: 1회 다시
         path = config.TTS_DIR / f"{config.STATION_CODE.lower()}_{article.article_id}_{attempt}.wav"
         try:
-            dur = await asyncio.to_thread(synth, article.anchor_script, path)
+            st = Steps(f"음성 생성 기사 {article.article_id} ({attempt}회)")
+            with st("TTS"):
+                dur = await asyncio.to_thread(synth, article.anchor_script, path)
+            st.done(f"{dur:.1f}초 분량")
             if rules.tts_ok(article.anchor_script, dur):
                 return TtsAudio(article_id=article.article_id, voice=config.TTS_VOICE,
                                 file_path=f"/static/tts/{path.name}", duration_sec=round(dur, 1))
