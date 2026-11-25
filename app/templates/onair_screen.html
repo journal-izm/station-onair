@@ -54,10 +54,10 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
 let paused = false, startedAt = null, regionNow = 'ALL', abortNow = false, reading = false;
 const $ = id => document.getElementById(id);
 // 앵커 루프 영상 (있으면)
-// 앵커 자리: 기본은 2D AI 앵커.
-//   ?anchor=3d   → 3D AI 앵커 (WebGL을 못 쓰는 PC면 자동으로 2D)
+// 앵커 자리: 기본은 3D AI 앵커 (WebGL을 못 쓰는 PC면 자동으로 2D).
+//   ?anchor=2d   → 2D AI 앵커
 //   ?anchor=loop → anchor_loop.mp4 반복 영상 (학생 팀이 만든 영상 쓸 때)
-const ANCHOR_MODE = new URLSearchParams(location.search).get('anchor') || '2d';
+const ANCHOR_MODE = new URLSearchParams(location.search).get('anchor') || '3d';
 const anchorOpt = { station: {{ station|tojson }}, code: {{ code|tojson }} };
 let ANCHOR = Anchor2D;
 if (ANCHOR_MODE === '3d' && Anchor3D.mount($('a2d'), anchorOpt)) ANCHOR = Anchor3D;
