@@ -1,0 +1,39 @@
+<!doctype html><html lang="ko"><head>{% include '_head.html' %}<title>{{ station }} · 2026 한빛시장 개표 LIVE</title></head>
+<body>{% include '_nav.html' %}
+<main>
+  <div class="panel" style="margin-bottom:18px">
+    <div class="row"><b style="font-size:18px">전체 개표율 <span id="rate">0.0</span>%</b><span class="muted" id="upd"></span><span class="sp"></span>
+      {% if other %}<a href="{{ other }}">다른 방송국 →</a>{% endif %}</div>
+    <div class="bar" style="margin-top:10px"><div id="ratebar" style="background:linear-gradient(90deg,var(--c2),var(--c1));width:0"></div></div>
+  </div>
+  <div class="grid g3">
+    <section class="panel"><h2>후보별 득표</h2><div id="cands"></div></section>
+    <section class="panel"><h2>지역별 1위 <span class="muted">(구를 누르면 상세)</span></h2><div id="map"></div><div id="legend" class="muted" style="font-size:13px"></div></section>
+    <section class="panel"><h2>실시간 기사</h2><ul class="feed" id="feed"><li class="muted">아직 출고된 기사가 없습니다</li></ul></section>
+  </div>
+</main>
+<script>
+let lastTop = 0;
+async function loadResults() {
+  const d = await api('GET', '/api/public/results');
+  rate.textContent = d.counted_rate.toFixed(1); ratebar.style.width = Math.min(100, d.counted_rate) + '%';
+  upd.textContent = d.updated_at ? d.updated_at + ' 갱신' : '개표 전';
+  cands.innerHTML = d.candidates.sort((a, b) => a.rank - b.rank).map(c => `
+    <div class="cand"><div class="dot" style="background:${c.color};color:${c.color}"></div>
+      <div><div class="nm">기호${c.id} ${esc(c.name)}${c.winner_flag ? `<span class="flag">${FLAG_KO[c.winner_flag]}</span>` : ''}</div>
+      <div class="sub">${esc(c.party || '')} · ${n(c.votes)}표</div></div>
+      <div class="pct" style="color:${c.color}">${c.rate.toFixed(1)}%</div></div>`).join('');
+  drawMap(document.getElementById('map'), d.regions, code => location.href = '/region/' + code);
+  legend.innerHTML = d.regions.map(r => `${esc(r.name)} ${r.counted_rate.toFixed(0)}%`).join(' · ');
+}
+async function loadFeed(newId) {
+  const list = await api('GET', '/api/public/articles?limit=20');
+  if (!list.length) return;
+  feed.innerHTML = list.map(a => `<li data-id="${a.article_id}">
+    <div class="t">${a.article_id === newId ? '<span class="new">NEW</span>' : ''}${esc(a.title)}</div>
+    <div class="m">${a.approved_at} · ${esc(a.region_name || '')} · ${TYPE_KO[a.event_type] || ''}</div><div class="b">${esc(a.body)}</div></li>`).join('');
+  feed.querySelectorAll('li').forEach(li => li.addEventListener('click', () => li.classList.toggle('open')));
+}
+loadResults(); loadFeed();
+listen('/api/public/stream', { 'results.updated': loadResults, 'article.published': d => loadFeed(d.article_id) });
+</script></body></html>

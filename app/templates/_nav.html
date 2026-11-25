@@ -1,0 +1,7 @@
+<header class="top">
+  <h1>{{ station }} · 2026 한빛시장 개표</h1>
+  {% if user and user.role == 'DESK' %}<a href="/desk">승인</a><a href="/monitor">수신</a><a href="/onair/control">큐시트</a><a href="/onair/screen" target="_blank">송출 화면</a>{% endif %}
+  {% if user and user.role == 'REPORTER' %}<a href="/reporter">내 기사</a>{% endif %}
+  <a href="/">개표 웹</a><span class="sp"></span>
+  {% if user %}<span>{{ user.name }}</span><button class="btn" style="padding:4px 10px" onclick="logout()">로그아웃</button>{% else %}<a href="/login">기자·데스크 로그인</a>{% endif %}
+</header>

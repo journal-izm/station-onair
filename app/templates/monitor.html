@@ -1,0 +1,27 @@
+<!doctype html><html lang="ko"><head>{% include '_head.html' %}<title>SCR-03-01 수신 모니터 · {{ station }}</title></head>
+<body>{% include '_nav.html' %}
+<main>
+  <div class="grid g3">
+    <section class="panel"><h2>선관위 수신 <span class="muted">(SCR-03-01)</span></h2>
+      <div class="kpi" id="state">-</div>
+      <p>마지막 성공 <b id="lastAt">-</b> · seq <b id="seq">-</b> · 실패 <b id="fail">0</b>회</p>
+      <p class="muted" id="err" style="color:var(--bad)"></p>
+      <button class="primary" id="run">지금 바로 받기</button>
+      <h2 style="margin-top:18px">AI 기사 생성</h2><p id="ai" class="muted"></p>
+    </section>
+    <section class="panel"><h2>감지한 이벤트 (최근 15)</h2><table class="t"><thead><tr><th>시각</th><th>이벤트</th><th>지역</th><th>개표율</th></tr></thead><tbody id="ev"></tbody></table></section>
+    <section class="panel"><h2>수신 기록 (최근 10)</h2><table class="t"><thead><tr><th>시각</th><th>since</th><th>받음</th><th>결과</th></tr></thead><tbody id="logs"></tbody></table></section>
+  </div>
+</main>
+<script>
+async function load() {
+  const d = await api('GET', '/api/sync/status');
+  state.textContent = d.state === 'OK' ? '● 정상' : '● 실패'; state.style.color = d.state === 'OK' ? 'var(--ok)' : 'var(--bad)';
+  lastAt.textContent = d.last_at || '-'; seq.textContent = d.last_seq; fail.textContent = d.fail_count; err.textContent = d.last_error || '';
+  ai.textContent = `AI 성공 ${d.ai.ai_ok} · 실패 ${d.ai.ai_fail} · 틀 기사 ${d.ai.template}` + (d.ai.last_error ? ` · 최근 오류: ${d.ai.last_error}` : '');
+  ev.innerHTML = d.recent_events.map(e => `<tr><td>${e.at}</td><td>${TYPE_KO[e.type] || e.type}</td><td>${esc(e.region_name || e.region)}</td><td>${e.rate}%</td></tr>`).join('');
+  logs.innerHTML = d.logs.map(l => `<tr><td>${l.at}</td><td>${l.since}</td><td>${l.rows}</td><td style="color:${l.status === 'OK' ? 'var(--ok)' : 'var(--bad)'}">${l.status}${l.error ? ' ' + esc(l.error) : ''}</td></tr>`).join('');
+}
+run.onclick = async () => { const r = await api('POST', '/api/sync/run'); toast(`${r.received}줄 받음 · 새 이벤트 ${r.new_events}`); load(); };
+load(); setInterval(load, 3000);
+</script></body></html>

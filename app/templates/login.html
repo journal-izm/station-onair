@@ -1,0 +1,23 @@
+<!doctype html><html lang="ko"><head>{% include '_head.html' %}<title>SCR-01-01 로그인 · {{ station }}</title></head>
+<body>{% include '_nav.html' %}
+<main style="max-width:420px">
+  <div class="panel" style="margin-top:40px">
+    <h2>기자·데스크 로그인 <span class="muted">(SCR-01-01)</span></h2>
+    <form id="f">
+      <label>아이디</label><input id="id" autocomplete="username" placeholder="reporter1~3, desk1~2" required>
+      <label>비밀번호</label><input id="pw" type="password" autocomplete="current-password" required>
+      <p id="err" style="color:var(--bad);min-height:20px"></p>
+      <button class="primary" style="width:100%">로그인</button>
+    </form>
+    <p class="muted" style="font-size:13px">회원가입은 없습니다. 계정 5개만 씁니다.</p>
+  </div>
+</main>
+<script>
+document.getElementById('f').addEventListener('submit', async e => {
+  e.preventDefault();
+  try {
+    const u = await api('POST', '/api/auth/login', { login_id: id.value.trim(), password: pw.value });
+    location.href = u.role === 'DESK' ? '/desk' : '/reporter';
+  } catch (er) { document.getElementById('err').textContent = er.message; }
+});
+</script></body></html>

@@ -30,10 +30,35 @@
 ```bash
 python -m venv .venv && source .venv/bin/activate   # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
-cp .env.example .env      # 값 채우기
-python seed.py
+cp .env.example .env.m    # M 방송국 값 채우기 (NEC_API_KEY · DEFAULT_PASSWORD · OPENAI_API_KEY)
+cp .env.example .env.k    # K 방송국 (STATION_CODE=K, 다른 키)
+ENV_FILE=.env.m python seed.py   # 계정 5개 · 후보 자료 · 큐시트 (서버를 처음 켜면 자동으로도 실행)
 uvicorn app.main:app --port 8101 --env-file .env.m   # M 방송국
 uvicorn app.main:app --port 8102 --env-file .env.k   # K 방송국 (nec-server 먼저 실행)
+```
+
+## 📦 구현 현황 (2~5단계)
+
+| 영역 | 파일 | 설계 번호 |
+|---|---|---|
+| 개표 수신·이벤트 감지 | `app/workers/sync_worker.py` · `app/logic/results.py` | FN-03-01 ~ 03 |
+| 기사 초안 (gpt-6-luna + RAG) | `app/workers/article_gen.py` · `app/logic/writer.py` · `app/rag/` | FN-04-01 · 02 |
+| 송고·승인·반려·대기열 | `app/services.py` · `app/logic/rules.py` | FN-04-04 · 05, FN-05-02 · 03, BR-01 ~ 07 |
+| TTS·아바타 | `app/workers/tts_worker.py` · `app/workers/avatar.py` | FN-07-02 · 07, BR-08 · 11 |
+| 20분 송출 엔진 | `app/logic/onair.py` · `app/onair_service.py` | FN-07-01 · 03 · 05 · 06, BR-09 · 10 |
+| 실시간 알림 (SSE) | `app/sse.py` | API-04-05 · 06-04 · 07-05 |
+| 화면 8개 | `app/templates/` (로그인·기자·데스크·수신 모니터·개표 웹·지역 상세·큐시트·송출 화면) | SCR-01-01 ~ 07-02 |
+| 후보 자료 (RAG 원문) | `app/rag/candidate_docs/*.md` | TBL-04-03 |
+| 영상 파일 | `app/static/media/` (이름 약속은 그 폴더 README) | TBL-07-03 |
+
+- OpenAI 키가 없어도 연습할 수 있습니다: 기사는 **틀 기사**(수치만 채움), 낭독은 **브라우저 음성**. 틀 기사도 기자 송고 → 데스크 승인을 거칩니다.
+- AI 기사의 득표율 숫자가 실제 개표 수치와 다르면 그 초안은 버리고 틀 기사로 바꿉니다 (환각 방지).
+- 화면 주소: 개표 웹 `/` · 로그인 `/login` · 기자 `/reporter` · 데스크 `/desk` · 수신 모니터 `/monitor` · 큐시트 `/onair/control` · 송출 화면 `/onair/screen` (OBS 1920×1080)
+
+## 🧪 테스트
+
+```bash
+python -m pytest -q          # 1차 확인 테스트케이스 중 자동 항목 (test_tc_… 이름 = TC 번호)
 ```
 
 ## 📌 번호 체계

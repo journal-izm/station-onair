@@ -1,0 +1,23 @@
+<!doctype html><html lang="ko"><head>{% include '_head.html' %}<title>SCR-06-02 지역별 상세 · {{ station }}</title></head>
+<body>{% include '_nav.html' %}
+<main>
+  <p><a href="/">← 전체 현황</a></p>
+  <div class="grid g2">
+    <section class="panel"><h2 id="ttl">지역</h2><div class="kpi"><span id="rate">0</span>%</div><div class="muted">개표율 · 선거인 <span id="ele"></span>명</div>
+      <div id="bars" style="margin-top:16px"></div></section>
+    <section class="panel"><h2>이 지역 기사</h2><ul class="feed" id="feed"><li class="muted">아직 없습니다</li></ul></section>
+  </div>
+</main>
+<script>
+const CODE = {{ region|tojson }};
+async function load() {
+  const d = await api('GET', '/api/public/results/' + CODE);
+  ttl.textContent = d.region + ' 상세'; rate.textContent = d.counted_rate.toFixed(1); ele.textContent = n(d.electors);
+  bars.innerHTML = d.candidates.map(c => `<div style="margin:12px 0"><div class="row"><b>기호${c.id} ${esc(c.name)}</b><span class="sp"></span>
+    <b style="color:${c.color}">${c.rate.toFixed(1)}%</b><span class="muted">${n(c.votes)}표</span></div>
+    <div class="bar" style="height:22px;margin-top:6px"><div style="width:${c.rate}%;background:${c.color};box-shadow:0 0 12px ${c.color}"></div></div></div>`).join('');
+  const list = await api('GET', '/api/public/articles?region=' + CODE);
+  if (list.length) feed.innerHTML = list.map(a => `<li class="open"><div class="t">${esc(a.title)}</div><div class="m">${a.approved_at}</div><div class="b">${esc(a.body)}</div></li>`).join('');
+}
+load(); listen('/api/public/stream', { 'results.updated': load, 'article.published': load });
+</script></body></html>

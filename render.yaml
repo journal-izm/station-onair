@@ -1,0 +1,25 @@
+# Render 무료 배포 (시연용) — M 방송국 한 곳만. 기사는 DEMO_AUTO_APPROVE로 자동 송고·승인 (사람 검수 생략은 시연에서만)
+services:
+  - type: web
+    name: station-onair-demo
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: DEMO_MODE
+        value: "true"
+      - key: DEMO_AUTO_APPROVE
+        value: "true"
+      - key: STATION_CODE
+        value: M
+      - key: NEC_BASE_URL
+        sync: false          # 예: https://nec-server-demo.onrender.com
+      - key: NEC_API_KEY
+        sync: false
+      - key: SECRET_KEY
+        generateValue: true
+      - key: DEFAULT_PASSWORD
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false

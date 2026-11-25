@@ -1,0 +1,56 @@
+<!doctype html><html lang="ko"><head>{% include '_head.html' %}<title>SCR-04 기자 · {{ station }}</title></head>
+<body>{% include '_nav.html' %}
+<main>
+  <div class="grid g2">
+    <section class="panel"><h2>내 기사 <span class="muted">(SCR-04-01)</span></h2>
+      <div class="row" style="margin-bottom:8px">
+        <select id="filter" style="width:auto"><option value="DRAFT,REJECTED">할 일 (초안·반려)</option><option value="SUBMITTED">송고함</option>
+          <option value="APPROVED">출고됨</option><option value="">전체</option></select><span class="sp"></span><span class="muted" id="cnt"></span></div>
+      <table class="t"><thead><tr><th>번호</th><th>제목</th><th>상태</th><th>시각</th></tr></thead><tbody id="list"></tbody></table>
+    </section>
+    <section class="panel" id="editor" style="display:none"><h2>기사 편집·송고 <span class="muted">(SCR-04-02)</span> <span id="st" class="st"></span></h2>
+      <div id="reject" style="display:none;background:#3A1E25;border-radius:8px;padding:10px;margin-bottom:8px"></div>
+      <label>제목</label><input id="title" maxlength="100">
+      <label>웹 기사 본문</label><textarea id="body" rows="7"></textarea>
+      <label>방송 원고 (AI 앵커가 읽음 · 20~30초) <span id="len" class="muted"></span></label><textarea id="script" rows="4"></textarea>
+      <details style="margin-top:10px"><summary class="muted">개표 수치·참고 자료 보기</summary><pre id="facts" style="white-space:pre-wrap;font-size:13px;color:#C9D2E3"></pre></details>
+      <div class="row" style="margin-top:12px"><button id="save">임시 저장</button><span class="sp"></span><button class="primary" id="submit">데스크로 송고</button></div>
+    </section>
+  </div>
+</main>
+<script>
+let cur = null;
+async function loadList() {
+  const rows = await api('GET', '/api/articles' + (filter.value ? '?status=' + filter.value : ''));
+  cnt.textContent = rows.length + '건';
+  list.innerHTML = rows.map(a => `<tr data-id="${a.article_id}" class="${cur && cur.article_id === a.article_id ? 'sel' : ''}">
+    <td>${a.article_id}</td><td>${esc(a.title)}<div class="muted" style="font-size:12px">${TYPE_KO[a.event_type] || ''} · ${esc(a.region_name || '')} · ${a.ai_model}</div></td>
+    <td><span class="st ${a.status}">${a.status}</span></td><td>${a.created_at}</td></tr>`).join('') || '<tr><td colspan="4" class="muted">없습니다</td></tr>';
+  list.querySelectorAll('tr[data-id]').forEach(tr => tr.addEventListener('click', () => open_(+tr.dataset.id)));
+}
+async function open_(id) {
+  cur = await api('GET', '/api/articles/' + id);
+  editor.style.display = 'block'; st.textContent = cur.status; st.className = 'st ' + cur.status;
+  title.value = cur.title; body.value = cur.body; script.value = cur.anchor_script; countLen();
+  const rj = cur.reviews.filter(r => r.action === 'REJECT').pop();
+  reject.style.display = cur.status === 'REJECTED' && rj ? 'block' : 'none';
+  if (rj) reject.textContent = `반려 (${rj.desk} ${rj.at}): ${rj.comment}`;
+  const ed = ['DRAFT', 'REJECTED'].includes(cur.status);
+  [title, body, script, save, submit].forEach(el => el.disabled = !ed);     // 송고 뒤에는 잠김
+  const e = cur.event || {};
+  facts.textContent = `이벤트: ${TYPE_KO[e.type] || ''} · 지역 ${e.region} · 개표율 ${e.counted_rate}% · 격차 ${n(e.gap)}표 · 남은 표 ${n(e.remaining)}\n득표율: ${JSON.stringify(e.vote_rates)}\n참고 자료: ${cur.rag_sources.map(s => s.title).join(', ') || '없음'}\n생성 모델: ${cur.ai_model}`;
+  loadList();
+}
+function countLen() { const c = script.value.replace(/\s/g, '').length; len.textContent = `${c}자 · 약 ${Math.round(c / 6)}초`; }
+script.addEventListener('input', countLen);
+save.onclick = async () => { try { await api('PUT', '/api/articles/' + cur.article_id, { title: title.value, body: body.value, anchor_script: script.value }); toast('임시 저장했습니다'); } catch (e) { toast(e.message); } };
+submit.onclick = async () => {
+  try { await api('PUT', '/api/articles/' + cur.article_id, { title: title.value, body: body.value, anchor_script: script.value });
+        await api('POST', '/api/articles/' + cur.article_id + '/submit'); toast('송고했습니다'); open_(cur.article_id); } catch (e) { toast(e.message); } };
+filter.onchange = loadList;
+loadList();
+api('GET', '/api/auth/me').then(me => listen('/api/newsroom/stream', {
+  'article.assigned': d => { if (d.reporter_id === me.user_id) { toast('새 초안이 배정됐습니다'); loadList(); } },
+  'article.rejected': d => { if (d.reporter_id === me.user_id) { toast('반려된 기사가 있습니다'); loadList(); } },
+  'article.approved': loadList }));
+</script></body></html>

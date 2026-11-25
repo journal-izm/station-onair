@@ -54,21 +54,23 @@ htmlcov/
 
 # ── RAG 벡터DB (Chroma) — 원문(rag/candidate_docs)으로 다시 만들 수 있음 ──
 chroma/
+vectordb/
 chroma_db/
 .chroma/
 *.parquet
 
 # ── 생성 파일: TTS 음성 (승인 기사마다 새로 생성) ──
-station_server/static/tts/
+app/static/tts/
+*.wav
 *.mp3
-!station_server/static/media/*.mp3
+!app/static/media/*.mp3
 
 # ── 영상 원본 (용량이 커서 Google Drive에 보관) ──
 *.mp4
 *.mov
 *.mkv
 *.webm
-# 방송용 최종 영상만 올리려면 Git LFS 사용: git lfs track "station_server/static/media/*.mp4"
+# 방송용 최종 영상만 올리려면 Git LFS 사용: git lfs track "app/static/media/*.mp4"
 
 # ── OBS 녹화·로그 ──
 recordings/

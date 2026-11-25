@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>SCR-07-01 송출 화면 · {{ station }}</title>
+<script src="/static/js/common.js"></script>
+<style>
+  /* 1920×1080 고정 — OBS 브라우저 소스 크기를 1920×1080으로 (NFR-05) */
+  html, body { margin:0; width:1920px; height:1080px; overflow:hidden; background:#060A14; color:#F2F5FA;
+               font-family:'Noto Sans KR',system-ui,sans-serif }
+  #stage { position:relative; width:1920px; height:1080px }
+  #anchor { position:absolute; left:40px; top:40px; width:820px; height:820px; border-radius:16px; overflow:hidden;
+            background:linear-gradient(160deg,#1A2440,#0B1120); border:2px solid #24304A }
+  #anchor video { width:100%; height:100%; object-fit:cover }
+  #anchor .label { position:absolute; left:20px; top:16px; font-size:26px; font-weight:800; color:#9AA6BC; z-index:2 }
+  #anchor .ph { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-size:180px; opacity:.25 }
+  #chart { position:absolute; left:900px; top:40px; width:980px; height:820px; border-radius:16px; background:#0B1120;
+           border:2px solid #24304A; padding:40px; box-sizing:border-box }
+  #chart h2 { font-size:44px; margin:0 0 40px } #chart .row { display:flex; align-items:center; gap:24px; margin:34px 0; font-size:34px; font-weight:800 }
+  #chart .nm { width:250px } #chart .b { height:70px; border-radius:10px; transition:width .8s } #chart .v { font-variant-numeric:tabular-nums }
+  #chart .flag { font-size:26px; background:#FFB020; color:#1a1200; border-radius:8px; padding:2px 12px; margin-left:12px }
+  #live { position:absolute; right:52px; top:52px; background:#E0483E; color:#fff; font-weight:800; font-size:30px; padding:6px 18px;
+          border-radius:10px; z-index:3 }
+  #headline { position:absolute; left:0; right:0; top:890px; height:100px; background:#E0483E; display:flex; align-items:center;
+              padding:0 50px; font-size:46px; font-weight:800; box-sizing:border-box; white-space:nowrap; overflow:hidden }
+  #ticker { position:absolute; left:0; right:0; top:990px; height:90px; background:#0B1120; display:flex; align-items:center; gap:46px;
+            padding:0 50px; font-size:34px; box-sizing:border-box }
+  #ticker .sp { flex:1 }
+  #full { position:absolute; inset:0; background:#000; display:none; z-index:5 } #full video { width:100%; height:100%; object-fit:contain }
+  #slate { position:absolute; inset:0; display:none; z-index:6; background:radial-gradient(circle at 50% 40%,#1A2440,#05070D);
+           align-items:center; justify-content:center; flex-direction:column; text-align:center }
+  #slate .t { font-size:90px; font-weight:900 } #slate .s { font-size:36px; color:#9AA6BC; margin-top:24px }
+  #gate { position:absolute; inset:0; z-index:9; background:rgba(5,7,13,.92); display:flex; align-items:center; justify-content:center;
+          flex-direction:column; font-size:40px; cursor:pointer }
+  #gate small { font-size:24px; color:#9AA6BC; margin-top:16px }
+</style>
+</head>
+<body>
+<div id="stage">
+  <div id="anchor"><div class="label">AI 앵커</div><div class="ph">🎙️</div><video id="loop" muted loop playsinline></video><video id="avatar" playsinline style="display:none"></video></div>
+  <div id="chart"><h2 id="ctitle">전체 · 개표율 0%</h2><div id="bars"></div></div>
+  <div id="live">● LIVE <span id="clock">00:00</span></div>
+  <div id="headline">2026 한빛시장 모의선거 개표방송</div>
+  <div id="ticker"><span id="tk"></span><span class="sp"></span><b id="tkrate">전체 개표율 0%</b></div>
+  <div id="full"><video id="fullv" playsinline></video></div>
+  <div id="slate"><div class="t" id="slt"></div><div class="s" id="sls"></div></div>
+  <div id="gate">▶ 클릭해서 송출 화면 시작<small>소리 재생을 위해 한 번 눌러 주세요 (OBS에서는 자동 재생 허용)</small></div>
+</div>
+<audio id="voice"></audio><audio id="bgm" src="/static/media/bgm.mp3" loop></audio>
+<script>
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+let paused = false, startedAt = null, regionNow = 'ALL', abortNow = false;
+const $ = id => document.getElementById(id);
+// 앵커 루프 영상 (있으면)
+$('loop').src = '/static/media/anchor_loop.mp4';
+$('loop').onloadeddata = () => { $('loop').play().catch(() => {}); document.querySelector('#anchor .ph').style.display = 'none'; };
+$('bgm').volume = 0.25;
+
+async function drawChart(code) {
+  regionNow = code;
+  try {
+    const d = await api('GET', '/api/public/results/' + code);
+    $('ctitle').textContent = `${d.region} · 개표율 ${d.counted_rate.toFixed(1)}%`;
+    $('bars').innerHTML = d.candidates.map(c => `<div class="row"><span class="nm">기호${c.id} ${esc(c.name)}</span>
+      <div class="b" style="width:${Math.max(4, c.rate * 9)}px;background:${c.color};box-shadow:0 0 22px ${c.color}"></div>
+      <span class="v">${c.rate.toFixed(1)}%</span>${c.winner_flag ? `<span class="flag">${FLAG_KO[c.winner_flag]}</span>` : ''}</div>`).join('');
+  } catch (e) {}
+}
+async function drawTicker() {
+  try {
+    const d = await api('GET', '/api/public/results');
+    $('tk').innerHTML = d.candidates.sort((a, b) => a.id - b.id).map(c =>
+      `<span style="color:${c.color}">●</span> <b style="color:${c.color}">${esc(c.name)}</b> ${c.rate.toFixed(1)}%`).join('&nbsp;&nbsp;&nbsp;&nbsp;');
+    $('tkrate').textContent = `전체 개표율 ${d.counted_rate.toFixed(1)}%`;
+  } catch (e) {}
+}
+function waitMedia(el, maxSec) {   // 재생이 끝나거나 최대 시간이 지나면 다음으로 (멈춤 방지)
+  return new Promise(res => {
+    let done = false; const fin = () => { if (!done) { done = true; res(); } };
+    el.onended = fin; el.onerror = fin;
+    const t0 = Date.now(); (function chk() { if (done) return; if (abortNow || (!paused && (Date.now() - t0) / 1000 > maxSec)) return fin(); setTimeout(chk, 500); })();
+  });
+}
+function speak(text, maxSec) {      // OpenAI 키가 없을 때: 브라우저 음성으로 읽기 (연습용)
+  return new Promise(res => {
+    if (!('speechSynthesis' in window)) return setTimeout(res, maxSec * 1000);
+    const u = new SpeechSynthesisUtterance(text); u.lang = 'ko-KR'; u.rate = 1.05;
+    let done = false; const fin = () => { if (!done) { done = true; res(); } };
+    u.onend = fin; u.onerror = fin; speechSynthesis.cancel(); speechSynthesis.speak(u);
+    setTimeout(fin, (maxSec + 8) * 1000);
+    (function chk() { if (done) return; if (abortNow) { speechSynthesis.cancel(); return fin(); } setTimeout(chk, 300); })();
+  });
+}
+async function waitSec(sec) { let left = sec; while (left > 0 && !abortNow) { await sleep(250); if (!paused) left -= 0.25; } }
+
+async function playVideo(n) {
+  $('full').style.display = 'block'; $('bgm').pause();
+  const v = $('fullv'); v.src = n.src; v.currentTime = 0;
+  await v.play().catch(() => {});
+  await waitMedia(v, (n.duration_sec || 60) + 5);
+  $('full').style.display = 'none'; v.pause();
+}
+async function playSlate(n) {
+  $('slate').style.display = 'flex'; $('slt').textContent = n.title; $('sls').textContent = `영상 준비 중 · ${n.duration_sec}초`;
+  await waitSec(n.duration_sec); $('slate').style.display = 'none';
+}
+async function playItem(n) {
+  $('bgm').pause(); $('headline').textContent = n.title; await drawChart(n.region_code || 'ALL');
+  let ok = 'DONE';
+  try {
+    if (n.media === 'AVATAR') {
+      const v = $('avatar'); v.style.display = 'block'; $('loop').style.display = 'none'; v.src = n.src; await v.play();
+      await waitMedia(v, (n.duration_sec || 30) * 1.5 + 5); v.style.display = 'none'; $('loop').style.display = 'block';
+    } else if (n.media === 'TTS') {
+      const a = $('voice'); a.src = n.audio; await a.play(); await waitMedia(a, (n.duration_sec || 30) * 1.5 + 5);
+    } else { await speak(n.script, n.duration_sec || 25); }
+  } catch (e) { ok = 'ERROR'; }
+  await api('POST', `/api/onair/queue/${n.queue_id}/done`, { result: ok }).catch(() => {});
+}
+async function playBoard(n) {
+  $('headline').textContent = n.segment === 'LIVE' && n.order_no > 6 ? '최종 결과 정리' : '실시간 개표 현황';
+  await drawChart('ALL'); if ($('bgm').paused) $('bgm').play().catch(() => {});
+  await waitSec(n.wait || 4);
+}
+async function loop() {
+  while (true) {
+    let n; abortNow = false;
+    try { n = await api('GET', '/api/onair/next'); } catch (e) { await sleep(2000); continue; }
+    if (n.kind === 'IDLE' || n.kind === 'PAUSE') { $('bgm').pause(); await sleep(1000); continue; }
+    if (n.kind === 'END') { $('bgm').pause(); $('headline').textContent = '개표방송을 마칩니다'; await sleep(3000); continue; }
+    if (!startedAt) startedAt = Date.now();
+    if (n.kind === 'VIDEO') await playVideo(n);
+    else if (n.kind === 'SLATE') await playSlate(n);
+    else if (n.kind === 'ITEM') await playItem(n);
+    else if (n.kind === 'BOARD') await playBoard(n);
+    else await sleep(1000);
+  }
+}
+function setPaused(p) {
+  paused = p;
+  for (const el of [$('fullv'), $('voice'), $('avatar'), $('bgm')]) { if (p) el.pause(); else if (el.src && el.currentTime > 0 && !el.ended && el !== $('bgm')) el.play().catch(() => {}); }
+  if ('speechSynthesis' in window) { p ? speechSynthesis.pause() : speechSynthesis.resume(); }
+}
+setInterval(() => { if (startedAt) { const s = Math.floor((Date.now() - startedAt) / 1000); $('clock').textContent = String(Math.floor(s / 60)).padStart(2, '0') + ':' + String(s % 60).padStart(2, '0'); } }, 1000);
+drawChart('ALL'); drawTicker();
+listen('/api/onair/stream', {
+  'results.updated': () => { drawTicker(); drawChart(regionNow); },
+  'onair.control': d => { if (d.action === 'pause') setPaused(true); if (d.action === 'resume' || d.action === 'start') setPaused(false);
+                          if (d.action === 'start' || d.action === 'reset') startedAt = null;
+                          if (d.action === 'skip' || d.action === 'reset') { abortNow = true; for (const el of [$('fullv'), $('voice'), $('avatar')]) el.pause();
+                            if ('speechSynthesis' in window) speechSynthesis.cancel(); } }
+});
+$('gate').onclick = () => { $('gate').style.display = 'none'; loop(); };
+</script>
+</body>
+</html>

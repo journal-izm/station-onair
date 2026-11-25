@@ -1,0 +1,37 @@
+/* 방송국 화면 공통 — 어두운 배경 + 네온 후보색 (후보 글자는 진한색 대신 밝은 배경 위에서만) */
+:root { --bg:#0B1120; --panel:#141C2F; --panel2:#0F1626; --line:#24304A; --text:#F2F5FA; --soft:#9AA6BC;
+        --c1:#FF2BD6; --c2:#00E5FF; --c3:#A6FF00; --ok:#3DDC97; --warn:#FFB020; --bad:#FF5A5F; --accent:#E0483E; }
+* { box-sizing:border-box }
+body { margin:0; font-family:'Noto Sans KR',system-ui,sans-serif; background:var(--bg); color:var(--text); font-size:15px }
+a { color:var(--c2) }
+header.top { display:flex; align-items:center; gap:14px; padding:14px 22px; background:var(--accent); color:#fff }
+header.top h1 { font-size:19px; margin:0 } header.top .sp { flex:1 } header.top a, header.top button { color:#fff; font-size:14px }
+header.top .live { background:#fff; color:var(--accent); font-weight:800; border-radius:6px; padding:2px 8px; font-size:13px }
+main { padding:20px 22px; max-width:1400px; margin:0 auto }
+.grid { display:grid; gap:18px } .g3 { grid-template-columns:1.1fr 1fr 1.2fr } .g2 { grid-template-columns:1fr 1.4fr }
+@media (max-width: 900px) { .g3, .g2 { grid-template-columns:1fr } main { padding:12px } }
+.panel { background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:18px; min-width:0 }
+.panel h2 { font-size:15px; color:var(--soft); margin:0 0 12px; font-weight:700 }
+.bar { height:12px; background:var(--panel2); border-radius:6px; overflow:hidden } .bar > div { height:100%; transition:width .6s }
+.cand { display:flex; align-items:center; gap:12px; padding:10px 0; border-bottom:1px solid var(--line) }
+.cand .dot { width:44px; height:44px; border-radius:50%; flex:none; box-shadow:0 0 14px currentColor }
+.cand .nm { font-weight:800; font-size:17px } .cand .sub { color:var(--soft); font-size:13px }
+.cand .pct { margin-left:auto; font-weight:800; font-size:24px; font-variant-numeric:tabular-nums }
+.flag { display:inline-block; font-size:12px; font-weight:800; padding:1px 7px; border-radius:5px; background:var(--warn); color:#1a1200; margin-left:6px }
+.feed { list-style:none; margin:0; padding:0 } .feed li { padding:10px 0; border-bottom:1px solid var(--line) }
+.feed .t { font-weight:700 } .feed .m { color:var(--soft); font-size:12px } .feed .b { color:#C9D2E3; font-size:14px; margin-top:4px; display:none }
+.feed li.open .b { display:block } .new { background:var(--accent); color:#fff; font-size:11px; padding:1px 6px; border-radius:4px; margin-right:6px }
+table.t { width:100%; border-collapse:collapse } table.t th, table.t td { padding:8px; border-bottom:1px solid var(--line); text-align:left; font-size:14px }
+table.t th { color:var(--soft); font-weight:600 } table.t tr.sel { background:#1C2742 } table.t tr { cursor:pointer }
+button, .btn { padding:10px 16px; border:0; border-radius:10px; font-size:15px; font-weight:700; cursor:pointer; background:#22304D; color:var(--text) }
+button.primary { background:var(--c2); color:#04121A } button.ok { background:var(--ok); color:#06210f } button.bad { background:#3A1E25; color:#FF9EA1 }
+button:disabled { opacity:.4; cursor:not-allowed }
+input, textarea, select { width:100%; padding:10px; border-radius:8px; border:1px solid var(--line); background:var(--panel2); color:var(--text); font:inherit }
+textarea { resize:vertical } label { color:var(--soft); font-size:13px; display:block; margin:10px 0 4px }
+.st { font-size:12px; font-weight:800; padding:2px 8px; border-radius:5px; background:#22304D }
+.st.DRAFT { background:#22304D } .st.SUBMITTED { background:#173A55; color:var(--c2) } .st.REJECTED { background:#3A1E25; color:#FF9EA1 }
+.st.APPROVED { background:#173D2B; color:var(--ok) } .st.WAITING { color:var(--c2) } .st.PLAYING { color:var(--ok) } .st.SKIPPED { color:var(--bad) }
+.muted { color:var(--soft) } .row { display:flex; gap:10px; align-items:center; flex-wrap:wrap } .sp { flex:1 }
+.toast { position:fixed; right:18px; bottom:18px; background:var(--panel); border:1px solid var(--c2); padding:12px 16px; border-radius:10px; display:none; z-index:9 }
+.kpi { font-size:34px; font-weight:800; font-variant-numeric:tabular-nums }
+svg.map path { stroke:var(--bg); stroke-width:3; cursor:pointer; transition:fill .6s } svg.map text { font-size:13px; font-weight:800; fill:#0B1120; pointer-events:none }

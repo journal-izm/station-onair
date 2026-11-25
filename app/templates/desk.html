@@ -1,0 +1,51 @@
+<!doctype html><html lang="ko"><head>{% include '_head.html' %}<title>SCR-05 데스크 · {{ station }}</title></head>
+<body>{% include '_nav.html' %}
+<main>
+  <div class="grid g2">
+    <section class="panel"><h2>승인 대기 <span class="muted">(SCR-05-01 · 도착 순)</span></h2>
+      <div class="row" style="margin-bottom:8px"><select id="filter" style="width:auto"><option value="SUBMITTED">승인 대기</option><option value="APPROVED">출고됨</option><option value="REJECTED">반려함</option></select>
+        <span class="sp"></span><span class="muted" id="cnt"></span></div>
+      <table class="t"><thead><tr><th>번호</th><th>제목</th><th>기자</th><th>기다림</th></tr></thead><tbody id="list"></tbody></table>
+    </section>
+    <section class="panel" id="view" style="display:none"><h2>기사 검토 <span class="muted">(SCR-05-02)</span> <span id="st" class="st"></span></h2>
+      <h3 id="title" style="margin:6px 0"></h3><div class="muted" id="meta"></div>
+      <p id="body" style="line-height:1.7;white-space:pre-wrap"></p>
+      <div class="panel" style="background:var(--panel2)"><b>방송 원고</b> <span class="muted" id="len"></span><p id="script" style="margin:6px 0 0;white-space:pre-wrap"></p></div>
+      <details style="margin-top:10px"><summary class="muted">개표 수치로 확인하기</summary><pre id="facts" style="white-space:pre-wrap;font-size:13px;color:#C9D2E3"></pre></details>
+      <label>반려 사유 (반려할 때 꼭 적기)</label><input id="comment" placeholder="예: 득표수를 최신 값으로 고쳐 주세요">
+      <div class="row" style="margin-top:12px"><button class="bad" id="rej" disabled>반려</button><span class="sp"></span><button class="ok" id="app">승인 = 출고</button></div>
+      <div class="muted" id="hist" style="margin-top:10px;font-size:13px"></div>
+    </section>
+  </div>
+</main>
+<script>
+let cur = null;
+async function loadList() {
+  const rows = await api('GET', '/api/desk/articles?status=' + filter.value);
+  cnt.textContent = rows.length + '건';
+  list.innerHTML = rows.map(a => `<tr data-id="${a.article_id}" class="${cur && cur.article_id === a.article_id ? 'sel' : ''}"><td>${a.article_id}</td>
+    <td>${esc(a.title)}<div class="muted" style="font-size:12px">${TYPE_KO[a.event_type] || ''} · ${esc(a.region_name || '')}</div></td>
+    <td>${esc(a.reporter)}</td><td>${a.waiting_sec != null ? a.waiting_sec + '초' : (a.approved_at || '')}</td></tr>`).join('') || '<tr><td colspan="4" class="muted">없습니다</td></tr>';
+  list.querySelectorAll('tr[data-id]').forEach(tr => tr.addEventListener('click', () => open_(+tr.dataset.id)));
+}
+async function open_(id) {
+  cur = await api('GET', '/api/articles/' + id);
+  view.style.display = 'block'; st.textContent = cur.status; st.className = 'st ' + cur.status;
+  title.textContent = cur.title; body.textContent = cur.body; script.textContent = cur.anchor_script;
+  meta.textContent = `${cur.reporter} · 송고 ${cur.submitted_at || '-'} · ${cur.ai_model}`;
+  const c = cur.anchor_script.replace(/\s/g, '').length; len.textContent = `${c}자 · 약 ${Math.round(c / 6)}초`;
+  const e = cur.event || {};
+  facts.textContent = `개표율 ${e.counted_rate}% · 득표 ${JSON.stringify(e.votes)} · 득표율 ${JSON.stringify(e.vote_rates)} · 격차 ${n(e.gap)}표`;
+  hist.textContent = cur.reviews.map(r => `${r.at} ${r.desk} ${r.action === 'APPROVE' ? '승인' : '반려'}${r.comment ? ' — ' + r.comment : ''}`).join(' / ');
+  const pending = cur.status === 'SUBMITTED'; app.disabled = !pending; comment.disabled = !pending; checkRej(); loadList();
+}
+function checkRej() { rej.disabled = !(cur && cur.status === 'SUBMITTED' && comment.value.trim()); }  // 사유 없으면 반려 불가
+comment.addEventListener('input', checkRej);
+app.onclick = async () => { try { const r = await api('POST', `/api/desk/articles/${cur.article_id}/approve`, { comment: '' });
+  toast(`출고했습니다 (대기열 #${r.queue_id})`); comment.value = ''; open_(cur.article_id); } catch (e) { toast(e.message); loadList(); } };
+rej.onclick = async () => { try { await api('POST', `/api/desk/articles/${cur.article_id}/reject`, { comment: comment.value });
+  toast('반려했습니다'); comment.value = ''; open_(cur.article_id); } catch (e) { toast(e.message); } };
+filter.onchange = loadList; loadList(); setInterval(loadList, 5000);
+listen('/api/newsroom/stream', { 'article.submitted': () => { toast('새 송고 기사가 도착했습니다'); loadList(); },
+  'article.approved': loadList, 'tts.failed': d => toast(`⚠ 기사 ${d.article_id} 음성 생성 실패 — 방송에서 건너뜀 (웹 게시는 유지)`, 6000) });
+</script></body></html>
