@@ -1,7 +1,7 @@
 """방송국 서버 실행 설정 — M·K가 같은 코드, .env.m / .env.k 로 나눔 (08 개발환경 '실행 설정').
 
-uvicorn app.main:app --port 8101 --env-file .env.m   (M 방송국)
-uvicorn app.main:app --port 8102 --env-file .env.k   (K 방송국)
+uvicorn app.main:app --port 8101 --env-file .env.m --timeout-graceful-shutdown 2   (M 방송국)
+uvicorn app.main:app --port 8102 --env-file .env.k --timeout-graceful-shutdown 2   (K 방송국)
 """
 import os
 from pathlib import Path

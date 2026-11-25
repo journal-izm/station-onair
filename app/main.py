@@ -1,6 +1,6 @@
 """방송국 서버 (M=8101, K=8102 — 같은 코드)
 
-uvicorn app.main:app --port 8101 --env-file .env.m
+uvicorn app.main:app --port 8101 --env-file .env.m --timeout-graceful-shutdown 2
   - 실시간 개표 웹: http://localhost:8101/          (누구나)
   - 로그인:        http://localhost:8101/login     (기자·데스크)
   - 송출 화면:     http://localhost:8101/onair/screen  (OBS 브라우저 소스, 1920×1080)

@@ -33,8 +33,8 @@ pip install -r requirements.txt
 cp .env.example .env.m    # M 방송국 값 채우기 (NEC_API_KEY · DEFAULT_PASSWORD · OPENAI_API_KEY)
 cp .env.example .env.k    # K 방송국 (STATION_CODE=K, 다른 키)
 python seed.py --env .env.m     # 계정 5개 · 후보 자료 · 큐시트 (서버를 처음 켜면 자동으로도 실행)
-uvicorn app.main:app --port 8101 --env-file .env.m   # M 방송국
-uvicorn app.main:app --port 8102 --env-file .env.k   # K 방송국 (nec-server 먼저 실행)
+uvicorn app.main:app --port 8101 --env-file .env.m --timeout-graceful-shutdown 2   # M 방송국
+uvicorn app.main:app --port 8102 --env-file .env.k --timeout-graceful-shutdown 2   # K 방송국 (nec-server 먼저 실행)
 ```
 
 ## 📦 구현 현황 (2~5단계)
