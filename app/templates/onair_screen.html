@@ -5,6 +5,7 @@
 <title>SCR-07-01 송출 화면 · {{ station }}</title>
 <script src="/static/js/common.js"></script>
 <script src="/static/js/anchor2d.js"></script>
+<script src="/static/js/anchor3d.js"></script>
 <style>
   /* 1920×1080 고정 — OBS 브라우저 소스 크기를 1920×1080으로 (NFR-05) */
   html, body { margin:0; width:1920px; height:1080px; overflow:hidden; background:#060A14; color:#F2F5FA;
@@ -53,9 +54,15 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
 let paused = false, startedAt = null, regionNow = 'ALL', abortNow = false, reading = false;
 const $ = id => document.getElementById(id);
 // 앵커 루프 영상 (있으면)
-// 앵커 자리: 기본은 2D AI 앵커. 주소 뒤에 ?anchor=loop 를 붙이면 anchor_loop.mp4 반복 영상 (학생 팀이 만든 영상 쓸 때)
-Anchor2D.mount($('a2d'), { station: {{ station|tojson }}, code: {{ code|tojson }} });
-if (new URLSearchParams(location.search).get('anchor') === 'loop') {
+// 앵커 자리: 기본은 2D AI 앵커.
+//   ?anchor=3d   → 3D AI 앵커 (WebGL을 못 쓰는 PC면 자동으로 2D)
+//   ?anchor=loop → anchor_loop.mp4 반복 영상 (학생 팀이 만든 영상 쓸 때)
+const ANCHOR_MODE = new URLSearchParams(location.search).get('anchor') || '2d';
+const anchorOpt = { station: {{ station|tojson }}, code: {{ code|tojson }} };
+let ANCHOR = Anchor2D;
+if (ANCHOR_MODE === '3d' && Anchor3D.mount($('a2d'), anchorOpt)) ANCHOR = Anchor3D;
+else Anchor2D.mount($('a2d'), anchorOpt);
+if (ANCHOR_MODE === 'loop') {
   $('loop').src = '/static/media/anchor_loop.mp4';
   $('loop').onloadeddata = () => { $('a2d').style.display = 'none'; $('loop').style.display = 'block'; $('loop').play().catch(() => {}); };
 }
@@ -168,7 +175,7 @@ async function playItem(n) {
       await waitMedia(v, (n.duration_sec || 30) * 1.5 + 5); v.style.display = 'none';
     } else if (n.media === 'TTS') {
       const a = $('voice'); a.src = n.audio; await a.play(); await waitMedia(a, (n.duration_sec || 30) * 1.5 + 5);
-    } else { Anchor2D.setSpeaking(true); try { await speak(n.script, n.duration_sec || 25); } finally { Anchor2D.setSpeaking(false); } }
+    } else { ANCHOR.setSpeaking(true); try { await speak(n.script, n.duration_sec || 25); } finally { ANCHOR.setSpeaking(false); } }
   } catch (e) { ok = 'ERROR'; }
   reading = false;
   await api('POST', `/api/onair/queue/${n.queue_id}/done`, { result: ok }).catch(() => {});
@@ -255,7 +262,7 @@ listen('/api/onair/stream', {
                           if (d.action === 'skip' || d.action === 'reset') { abortNow = true; for (const el of [$('fullv'), $('voice'), $('avatar')]) el.pause();
                             if ('speechSynthesis' in window) speechSynthesis.cancel(); } }
 });
-$('gate').onclick = () => { $('gate').style.display = 'none'; Anchor2D.attachAudio($('voice')); loop(); };
+$('gate').onclick = () => { $('gate').style.display = 'none'; ANCHOR.attachAudio($('voice')); loop(); };
 </script>
 </body>
 </html>
