@@ -76,5 +76,7 @@ def require(*names: str) -> None:
         raise SystemExit(f"[설정 오류] .env에 다음 값이 없습니다: {', '.join(missing)}  (.env.example 참고)")
 
 
+if "://" not in DB_URL and DB_URL.endswith(".db"):      # 파일 이름만 적어도 됨 (예: station_m.db)
+    DB_URL = f"sqlite:///{(BASE_DIR / DB_URL).as_posix()}"
 if "://" not in DB_URL:
     raise SystemExit(f"[설정 오류] DB 주소가 이상합니다: {DB_URL!r} — .env의 DB 주소 칸을 비우거나 sqlite:///파일이름.db 형식으로 적으세요")
