@@ -4,39 +4,50 @@
 const Anchor2D = (() => {
   let root, mouthOuter, mouthInner, teeth, lidsL, lidsR, browL, browR, headG, bodyG;
   let ctx = null, analyser = null, buf = null, synthSpeaking = false, open = 0, nextBlink = 2500, blinkT = -9999;
-  const SVG = (station) => `
+  // 방송국별 앵커 (둘 다 원본 캐릭터). M: 남색 배경·긴 머리·시안 넥타이 / K: 보라 배경·짧은 머리·안경·마젠타 스카프
+  const THEMES = {
+    M: { bg: ['#4A6FB5', '#2B4378', '#18264A'], suit: ['#22324F', '#121C30'], hair: ['#3B2D5C', '#1E1733'], tie: '#00E5FF', pin: '#A6FF00',
+         arc1: '#00E5FF', arc2: '#FF2BD6', iris: '#3A2A6A', longHair: true, glasses: false },
+    K: { bg: ['#8A5BC4', '#55367F', '#2A1A45'], suit: ['#4A2338', '#2A1220'], hair: ['#1F1A1A', '#0D0A0A'], tie: '#FF2BD6', pin: '#00E5FF',
+         arc1: '#FFB800', arc2: '#00FFA3', iris: '#5A3A1A', longHair: false, glasses: true },
+  };
+  const SVG = (station, T) => `
 <svg viewBox="0 0 820 820" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:100%;display:block">
   <defs>
-    <radialGradient id="a2bg" cx="50%" cy="38%" r="70%"><stop offset="0" stop-color="#22305A"/><stop offset="1" stop-color="#070B16"/></radialGradient>
-    <linearGradient id="a2suit" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#22324F"/><stop offset="1" stop-color="#121C30"/></linearGradient>
-    <linearGradient id="a2hair" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3B2D5C"/><stop offset="1" stop-color="#1E1733"/></linearGradient>
+    <radialGradient id="a2bg" cx="50%" cy="38%" r="70%"><stop offset="0" stop-color="${T.bg[0]}"/><stop offset=".55" stop-color="${T.bg[1]}"/><stop offset="1" stop-color="${T.bg[2]}"/></radialGradient>
+    <linearGradient id="a2suit" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${T.suit[0]}"/><stop offset="1" stop-color="${T.suit[1]}"/></linearGradient>
+    <linearGradient id="a2hair" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${T.hair[0]}"/><stop offset="1" stop-color="${T.hair[1]}"/></linearGradient>
     <filter id="a2glow"><feGaussianBlur stdDeviation="6" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
   </defs>
   <rect width="820" height="820" fill="url(#a2bg)"/>
   <g opacity=".55">${Array.from({length: 40}, (_, i) => `<circle cx="${(i * 383 + 57) % 820}" cy="${(i * i * 37 + i * 91) % 470}" r="${i % 3 ? 1.6 : 2.6}" fill="#C9D6FF"/>`).join('')}</g>
-  <path d="M60 520 Q410 250 760 520" fill="none" stroke="#00E5FF" stroke-width="4" opacity=".35" filter="url(#a2glow)"/>
-  <path d="M100 560 Q410 330 720 560" fill="none" stroke="#FF2BD6" stroke-width="3" opacity=".3" filter="url(#a2glow)"/>
+  <path d="M60 520 Q410 250 760 520" fill="none" stroke="${T.arc1}" stroke-width="4" opacity=".35" filter="url(#a2glow)"/>
+  <path d="M100 560 Q410 330 720 560" fill="none" stroke="${T.arc2}" stroke-width="3" opacity=".3" filter="url(#a2glow)"/>
   <g id="a2body">
     <path d="M150 820 Q160 600 300 565 L520 565 Q660 600 670 820 Z" fill="url(#a2suit)"/>
     <path d="M345 565 L410 690 L475 565 Z" fill="#EEF2F8"/>
-    <path d="M398 600 L422 600 L432 700 L410 730 L388 700 Z" fill="#00E5FF" filter="url(#a2glow)"/>
-    <path d="M300 565 L410 720 L330 820 L230 640 Z" fill="#1A2740"/><path d="M520 565 L410 720 L490 820 L590 640 Z" fill="#1A2740"/>
-    <circle cx="545" cy="660" r="9" fill="#A6FF00" filter="url(#a2glow)"/>
+    ${T.longHair ? `<path d="M398 600 L422 600 L432 700 L410 730 L388 700 Z" fill="${T.tie}" filter="url(#a2glow)"/>`
+      : `<path d="M352 575 Q410 640 468 575 L455 610 Q410 665 365 610 Z" fill="${T.tie}" filter="url(#a2glow)"/><circle cx="410" cy="628" r="10" fill="${T.tie}"/>`}
+    <path d="M300 565 L410 720 L330 820 L230 640 Z" fill="${T.suit[1]}"/><path d="M520 565 L410 720 L490 820 L590 640 Z" fill="${T.suit[1]}"/>
+    <circle cx="545" cy="660" r="9" fill="${T.pin}" filter="url(#a2glow)"/>
     <rect x="370" y="500" width="80" height="80" rx="20" fill="#E7B896"/>
   </g>
   <g id="a2head">
-    <ellipse cx="410" cy="330" rx="150" ry="170" fill="url(#a2hair)"/>
+    ${T.longHair ? '<ellipse cx="410" cy="330" rx="150" ry="170" fill="url(#a2hair)"/>' : '<ellipse cx="410" cy="290" rx="138" ry="140" fill="url(#a2hair)"/>'}
     <ellipse cx="282" cy="345" rx="20" ry="30" fill="#E7B896"/><ellipse cx="538" cy="345" rx="20" ry="30" fill="#E7B896"/>
-    <circle cx="540" cy="352" r="7" fill="#00E5FF" filter="url(#a2glow)"/>
+    <circle cx="540" cy="352" r="7" fill="${T.tie}" filter="url(#a2glow)"/>
     <ellipse cx="410" cy="345" rx="125" ry="150" fill="#F2C9A8"/>
-    <path d="M285 300 Q300 175 410 168 Q530 172 540 300 Q500 230 430 222 Q350 220 285 300 Z" fill="url(#a2hair)"/>
-    <path d="M268 300 Q262 430 300 470 L292 330 Z" fill="url(#a2hair)"/><path d="M552 300 Q558 430 520 470 L528 330 Z" fill="url(#a2hair)"/>
+    ${T.longHair
+      ? `<path d="M285 300 Q300 175 410 168 Q530 172 540 300 Q500 230 430 222 Q350 220 285 300 Z" fill="url(#a2hair)"/>
+    <path d="M268 300 Q262 430 300 470 L292 330 Z" fill="url(#a2hair)"/><path d="M552 300 Q558 430 520 470 L528 330 Z" fill="url(#a2hair)"/>`
+      : `<path d="M282 320 Q280 170 420 165 Q545 175 540 320 Q530 255 470 240 Q440 200 380 236 Q320 250 282 320 Z" fill="url(#a2hair)"/>`}
     <path id="a2browL" d="M330 290 Q360 276 390 288" stroke="#2A1F3D" stroke-width="9" fill="none" stroke-linecap="round"/>
     <path id="a2browR" d="M430 288 Q460 276 490 290" stroke="#2A1F3D" stroke-width="9" fill="none" stroke-linecap="round"/>
-    <g><ellipse cx="360" cy="330" rx="26" ry="18" fill="#fff"/><circle cx="362" cy="331" r="12" fill="#3A2A6A"/><circle cx="366" cy="326" r="4" fill="#fff"/>
+    <g><ellipse cx="360" cy="330" rx="26" ry="18" fill="#fff"/><circle cx="362" cy="331" r="12" fill="${T.iris}"/><circle cx="366" cy="326" r="4" fill="#fff"/>
        <rect id="a2lidL" x="330" y="308" width="60" height="0" fill="#F2C9A8"/></g>
-    <g><ellipse cx="460" cy="330" rx="26" ry="18" fill="#fff"/><circle cx="462" cy="331" r="12" fill="#3A2A6A"/><circle cx="466" cy="326" r="4" fill="#fff"/>
+    <g><ellipse cx="460" cy="330" rx="26" ry="18" fill="#fff"/><circle cx="462" cy="331" r="12" fill="${T.iris}"/><circle cx="466" cy="326" r="4" fill="#fff"/>
        <rect id="a2lidR" x="430" y="308" width="60" height="0" fill="#F2C9A8"/></g>
+    ${T.glasses ? `<g fill="none" stroke="#FFB800" stroke-width="5" opacity=".95"><rect x="322" y="304" width="78" height="54" rx="20"/><rect x="422" y="304" width="78" height="54" rx="20"/><path d="M400 326 Q411 318 422 326"/><path d="M322 320 L290 312"/><path d="M500 320 L532 312"/></g>` : ''}
     <path d="M410 345 Q400 385 412 392" stroke="#D49C7E" stroke-width="5" fill="none" stroke-linecap="round"/>
     <ellipse cx="330" cy="395" rx="22" ry="12" fill="#F5A3A3" opacity=".35"/><ellipse cx="490" cy="395" rx="22" ry="12" fill="#F5A3A3" opacity=".35"/>
     <ellipse id="a2mouthO" cx="410" cy="430" rx="30" ry="4" fill="#C8506A"/>
@@ -48,7 +59,7 @@ const Anchor2D = (() => {
 </svg>`;
 
   function mount(el, opt = {}) {
-    el.innerHTML = SVG(opt.station || '방송국');
+    el.innerHTML = SVG(opt.station || '방송국', THEMES[opt.code] || THEMES.M);
     root = el;
     const q = id => el.querySelector('#' + id);
     mouthOuter = q('a2mouthO'); mouthInner = q('a2mouthI'); teeth = q('a2teeth');

@@ -54,7 +54,7 @@ let paused = false, startedAt = null, regionNow = 'ALL', abortNow = false, readi
 const $ = id => document.getElementById(id);
 // 앵커 루프 영상 (있으면)
 // 앵커 자리: 기본은 2D AI 앵커. 주소 뒤에 ?anchor=loop 를 붙이면 anchor_loop.mp4 반복 영상 (학생 팀이 만든 영상 쓸 때)
-Anchor2D.mount($('a2d'), { station: {{ station|tojson }} });
+Anchor2D.mount($('a2d'), { station: {{ station|tojson }}, code: {{ code|tojson }} });
 if (new URLSearchParams(location.search).get('anchor') === 'loop') {
   $('loop').src = '/static/media/anchor_loop.mp4';
   $('loop').onloadeddata = () => { $('a2d').style.display = 'none'; $('loop').style.display = 'block'; $('loop').play().catch(() => {}); };
