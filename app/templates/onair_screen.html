@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <title>SCR-07-01 송출 화면 · {{ station }}</title>
 <script src="/static/js/common.js"></script>
+<script src="/static/js/anchor2d.js"></script>
 <style>
   /* 1920×1080 고정 — OBS 브라우저 소스 크기를 1920×1080으로 (NFR-05) */
   html, body { margin:0; width:1920px; height:1080px; overflow:hidden; background:#060A14; color:#F2F5FA;
@@ -13,7 +14,6 @@
             background:linear-gradient(160deg,#1A2440,#0B1120); border:2px solid #24304A }
   #anchor video { width:100%; height:100%; object-fit:cover }
   #anchor .label { position:absolute; left:20px; top:16px; font-size:26px; font-weight:800; color:#9AA6BC; z-index:2 }
-  #anchor .ph { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-size:180px; opacity:.25 }
   #chart { overflow:hidden; position:absolute; left:900px; top:40px; width:980px; height:820px; border-radius:16px; background:#0B1120;
            border:2px solid #24304A; padding:40px; box-sizing:border-box }
   #chart svg.map path { stroke:#0B1120; stroke-width:3 } #chart svg.map text { font-size:15px; font-weight:800 }
@@ -38,7 +38,7 @@
 </head>
 <body>
 <div id="stage">
-  <div id="anchor"><div class="label">AI 앵커</div><div class="ph">🎙️</div><video id="loop" muted loop playsinline></video><video id="avatar" playsinline style="display:none"></video></div>
+  <div id="anchor"><div id="a2d" style="position:absolute;inset:0"></div><video id="loop" muted loop playsinline style="display:none;position:absolute;inset:0"></video><video id="avatar" playsinline style="display:none;position:absolute;inset:0"></video></div>
   <div id="chart"><h2 id="ctitle">전체 · 개표율 0%</h2><div id="bars"></div></div>
   <div id="live">● LIVE <span id="clock">00:00</span></div>
   <div id="headline">2026 한빛시장 모의선거 개표방송</div>
@@ -53,8 +53,12 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
 let paused = false, startedAt = null, regionNow = 'ALL', abortNow = false, reading = false;
 const $ = id => document.getElementById(id);
 // 앵커 루프 영상 (있으면)
-$('loop').src = '/static/media/anchor_loop.mp4';
-$('loop').onloadeddata = () => { $('loop').play().catch(() => {}); document.querySelector('#anchor .ph').style.display = 'none'; };
+// 앵커 자리: 기본은 2D AI 앵커. 주소 뒤에 ?anchor=loop 를 붙이면 anchor_loop.mp4 반복 영상 (학생 팀이 만든 영상 쓸 때)
+Anchor2D.mount($('a2d'), { station: {{ station|tojson }} });
+if (new URLSearchParams(location.search).get('anchor') === 'loop') {
+  $('loop').src = '/static/media/anchor_loop.mp4';
+  $('loop').onloadeddata = () => { $('a2d').style.display = 'none'; $('loop').style.display = 'block'; $('loop').play().catch(() => {}); };
+}
 $('bgm').volume = 0.25;
 
 async function drawChart(code) {
@@ -160,11 +164,11 @@ async function playItem(n) {
   let ok = 'DONE';
   try {
     if (n.media === 'AVATAR') {
-      const v = $('avatar'); v.style.display = 'block'; $('loop').style.display = 'none'; v.src = n.src; await v.play();
-      await waitMedia(v, (n.duration_sec || 30) * 1.5 + 5); v.style.display = 'none'; $('loop').style.display = 'block';
+      const v = $('avatar'); v.style.display = 'block'; v.src = n.src; await v.play();      // 립싱크 아바타 영상이 앵커 자리를 덮음
+      await waitMedia(v, (n.duration_sec || 30) * 1.5 + 5); v.style.display = 'none';
     } else if (n.media === 'TTS') {
       const a = $('voice'); a.src = n.audio; await a.play(); await waitMedia(a, (n.duration_sec || 30) * 1.5 + 5);
-    } else { await speak(n.script, n.duration_sec || 25); }
+    } else { Anchor2D.setSpeaking(true); try { await speak(n.script, n.duration_sec || 25); } finally { Anchor2D.setSpeaking(false); } }
   } catch (e) { ok = 'ERROR'; }
   reading = false;
   await api('POST', `/api/onair/queue/${n.queue_id}/done`, { result: ok }).catch(() => {});
@@ -251,7 +255,7 @@ listen('/api/onair/stream', {
                           if (d.action === 'skip' || d.action === 'reset') { abortNow = true; for (const el of [$('fullv'), $('voice'), $('avatar')]) el.pause();
                             if ('speechSynthesis' in window) speechSynthesis.cancel(); } }
 });
-$('gate').onclick = () => { $('gate').style.display = 'none'; loop(); };
+$('gate').onclick = () => { $('gate').style.display = 'none'; Anchor2D.attachAudio($('voice')); loop(); };
 </script>
 </body>
 </html>
