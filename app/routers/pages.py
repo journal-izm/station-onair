@@ -42,6 +42,11 @@ def region_page(request: Request, code: str):
     return page(request, "region.html", region=code)         # SCR-06-02
 
 
+@router.get("/ask", response_class=HTMLResponse)
+def ask_page(request: Request):
+    return page(request, "ask.html")                         # 시청자 질문 (송출 화면 QR로 들어옴, 누구나)
+
+
 @router.get("/login", response_class=HTMLResponse)
 def login_page(request: Request):
     user = _user(request)

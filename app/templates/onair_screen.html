@@ -37,6 +37,27 @@
   #slate .t { font-size:90px; font-weight:900 } #slate .s { font-size:36px; color:#9AA6BC; margin-top:24px }
   #gate { position:absolute; inset:0; z-index:9; background:rgba(5,7,13,.92); display:flex; align-items:center; justify-content:center;
           flex-direction:column; font-size:40px; cursor:pointer }
+  /* 근거 카드 (보이는 RAG): 앵커가 읽는 문장의 근거가 차트 아래에 겹쳐 뜸 */
+  #evid { position:absolute; left:924px; top:600px; width:932px; height:244px; z-index:3; pointer-events:none }
+  #evid .card { position:absolute; left:0; bottom:0; width:880px; height:212px; box-sizing:border-box; padding:18px 24px; border-radius:16px;
+                background:rgba(14,21,39,.96); border:3px solid #00E5FF; box-shadow:0 10px 40px rgba(0,0,0,.6); overflow:hidden;
+                animation:evIn .35s ease both }
+  #evid .card.k1 { transform:translate(26px,-22px); opacity:.75; z-index:-1 }
+  #evid .card .hd { font-size:24px; font-weight:800; display:flex; gap:12px; align-items:center; white-space:nowrap; overflow:hidden }
+  #evid .card .chip { background:#00E5FF; color:#04121A; border-radius:8px; padding:2px 10px; font-size:20px; flex:none }
+  #evid .card .rf { color:#9AA6BC; font-size:20px; font-weight:400; overflow:hidden; text-overflow:ellipsis }
+  #evid .card .tx { font-size:25px; line-height:1.45; margin-top:10px; color:#C9D2E3; display:-webkit-box; -webkit-line-clamp:4; -webkit-box-orient:vertical; overflow:hidden }
+  #evid .card mark { background:#FFE08A; color:#1a1200; border-radius:4px; padding:0 4px }
+  #evid .card.NEC { border-color:#00E5FF } #evid .card.NEC .chip { background:#00E5FF }
+  #evid .card.DOC { border-color:#FFB020 } #evid .card.DOC .chip { background:#FFB020 }
+  #evid .card.OFFICIAL { border-color:#A6FF00 } #evid .card.OFFICIAL .chip { background:#A6FF00 }
+  #evid .card.ARTICLE { border-color:#B8C2D6 } #evid .card.ARTICLE .chip { background:#B8C2D6 }
+  @keyframes evIn { from { opacity:0; transform:translateY(30px) } }
+  #chart.withev #bars { transform:scale(.7); transform-origin:top left }
+  /* 시청자 질문 QR */
+  #qr { position:absolute; left:1690px; top:650px; width:170px; z-index:3; text-align:center; background:#0E1527; border:2px solid #24304A;
+        border-radius:14px; padding:10px; font-size:18px; color:#C9D2E3; display:none }
+  #qr img { width:146px; height:146px; background:#fff; border-radius:6px }
   #gate small { font-size:24px; color:#9AA6BC; margin-top:16px }
 </style>
 </head>
@@ -44,6 +65,8 @@
 <div id="stage">
   <div id="anchor"><div id="a2d" style="position:absolute;inset:0"></div><video id="loop" muted loop playsinline style="display:none;position:absolute;inset:0"></video><video id="avatar" playsinline style="display:none;position:absolute;inset:0"></video></div>
   <div id="chart"><h2 id="ctitle">전체 · 개표율 0%</h2><div id="bars"></div></div>
+  <div id="evid"></div>
+  <div id="qr"><img id="qrimg" alt="질문 QR"><div>📱 앵커에게 질문</div></div>
   <div id="live">● LIVE <span id="clock">00:00</span></div>
   <div id="headline">2026 한빛시장 모의선거 개표방송</div>
   <div id="ticker"><span id="tk"></span><span class="sp"></span><b id="tkrate">전체 개표율 0%</b></div>
@@ -167,6 +190,75 @@ async function drawArticleChart(it) {
   $('bars').innerHTML = body + foot;
   regionNow = it.region_code || 'ALL';
 }
+// ── 근거 카드: 문장마다 맞는 근거 (숫자가 맞으면 선관위 개표 집계, 낱말이 겹치면 후보 자료·공식 자료) ──
+const KIND_LABEL = { NEC: '선관위 개표 자료', DOC: '후보 자료 (RAG)', OFFICIAL: '공식 자료 (RAG)', ARTICLE: '출고 기사 (RAG)' };
+function toks(t) { const o = new Set(); (String(t || '').match(/[0-9A-Za-z가-힣]+/g) || []).forEach(w => { if (w.length >= 2) { o.add(w); o.add(w.slice(0, 2)); if (w.length >= 3) o.add(w.slice(0, 3)); } }); return o; }
+function nums(t) { return new Set((String(t || '').match(/\d[\d,]*(?:\.\d+)?/g) || []).map(x => x.replace(/,/g, '')).filter(x => x.length >= 2)); }
+function overlap(a, b) { let c = 0; a.forEach(x => { if (b.has(x)) c++; }); return c; }
+function splitSents(t) { return String(t || '').split(/(?<=[.!?])\s+|\n+/).map(x => x.trim()).filter(Boolean); }
+function matchSources(sent, sources) {
+  const sn = nums(sent), st = toks(sent);
+  return sources.map((s, i) => { const nm = overlap(sn, nums(s.text)); let sc = 3 * nm + overlap(st, toks(s.title + ' ' + s.text)); if (s.kind === 'NEC' && !nm) sc = 0; return [sc, i]; })
+    .filter(x => x[0] >= 3).sort((a, b) => b[0] - a[0]).slice(0, 2).map(x => x[1]);
+}
+function markText(s, sent) {
+  if (s.kind === 'NEC') {                                       // 문장에 나온 숫자를 하이라이트
+    const sn = nums(sent);
+    return esc(s.text).replace(/\d[\d,]*(?:\.\d+)?/g, m => sn.has(m.replace(/,/g, '')) ? `<mark>${m}</mark>` : m);
+  }
+  const st = toks(sent), parts = splitSents(s.text);
+  const best = s.highlight || parts.reduce((a, b) => overlap(st, toks(b)) > overlap(st, toks(a)) ? b : a, parts[0] || '');
+  return esc(s.text).replace(esc(best), `<mark>${esc(best)}</mark>`);
+}
+function showCards(idx, sources, sent) {
+  $('evid').innerHTML = idx.map((i, k) => { const s = sources[i];
+    return `<div class="card ${s.kind} k${k}"><div class="hd"><span class="chip">근거 ${i + 1}</span>${esc(KIND_LABEL[s.kind] || s.kind)} · ${esc(s.title)}<span class="rf">${esc(s.ref || '')}</span></div>
+      <div class="tx">${markText(s, sent)}</div></div>`; }).reverse().join('');
+  $('chart').classList.toggle('withev', idx.length > 0);
+}
+let evTimer = null;
+function stopEvidence() { clearInterval(evTimer); evTimer = null; $('evid').innerHTML = ''; $('chart').classList.remove('withev'); }
+function startEvidence(text, sources, mediaEl, estSec) {
+  stopEvidence(); if (!sources || !sources.length) return;
+  const sents = splitSents(text), total = sents.reduce((a, x) => a + x.length, 0) || 1;
+  let c = 0; const cum = sents.map(x => (c += x.length) / total);
+  const t0 = Date.now(); let last = -1, shown = false;
+  const step = () => {
+    if (paused) return;
+    const p = mediaEl && mediaEl.duration > 0 && isFinite(mediaEl.duration) ? mediaEl.currentTime / mediaEl.duration : (Date.now() - t0) / 1000 / Math.max(1, estSec);
+    let i = cum.findIndex(x => p <= x); if (i < 0) i = sents.length - 1;
+    if (i === last) return; last = i;
+    const idx = matchSources(sents[i], sources);
+    if (idx.length) { showCards(idx, sources, sents[i]); shown = true; }
+    else if (!shown) { showCards([0], sources, sents[i]); shown = true; }   // 처음에는 첫 근거라도
+  };
+  step(); evTimer = setInterval(step, 250);
+}
+// ── 시청자 질문 (QR → AI 답변 → 데스크 승인 → 앵커 답변) ──
+async function setupQR() {
+  if (new URLSearchParams(location.search).get('qr') === '0') return;
+  try {
+    const { ask_url } = await api('GET', '/api/onair/qa/info');
+    const img = $('qrimg');
+    img.onerror = () => { img.replaceWith(Object.assign(document.createElement('div'), { textContent: ask_url, style: 'font-size:14px;word-break:break-all' })); };
+    img.src = 'https://api.qrserver.com/v1/create-qr-code/?size=300x300&margin=8&data=' + encodeURIComponent(ask_url);
+    $('qr').style.display = 'block';
+  } catch (e) {}
+}
+async function playQA(q) {
+  $('bgm').pause(); reading = true; $('qr').style.visibility = 'hidden';
+  const hl = $('headline'); hl.classList.remove('urgent'); hl.textContent = `🙋 시청자 질문 · ${q.nickname}님`;
+  $('ctitle').textContent = '시청자 질문에 답합니다';
+  $('bars').innerHTML = `<div style="background:#141C2F;border-radius:18px;padding:24px 28px;font-size:36px;font-weight:800;line-height:1.35">Q. ${esc(q.question)}</div>
+    <div style="margin:22px 0 10px">${q.grounded ? '<span style="background:#173D2B;color:#7CF29A;border-radius:8px;padding:4px 14px;font-size:24px;font-weight:800">공식 자료 근거로 답변</span>'
+      : '<span style="background:#4A2A10;color:#FFB020;border-radius:8px;padding:4px 14px;font-size:24px;font-weight:800">근거 없음 — 지어내지 않습니다</span>'}</div>
+    <div style="font-size:32px;line-height:1.5">A. ${esc(q.answer)}</div>`;
+  try {
+    if (q.audio) { const a = $('voice'); a.src = q.audio; await a.play(); startEvidence(q.script, q.sources, a, q.duration_sec || 20); await waitMedia(a, (q.duration_sec || 30) * 1.5 + 5); }
+    else { startEvidence(q.script, q.sources, null, q.script.replace(/\s/g, '').length / 6); ANCHOR.setSpeaking(true); try { await speak(q.script, 40); } finally { ANCHOR.setSpeaking(false); } }
+  } catch (e) {}
+  await waitSec(1.5); stopEvidence(); reading = false; $('qr').style.visibility = 'visible';
+}
 async function playItem(n) {
   $('bgm').pause();
   const hl = $('headline');
@@ -181,13 +273,17 @@ async function playItem(n) {
       else { ANCHOR.setSpeaking(true); try { await speak('긴급 속보입니다.', 3); } finally { ANCHOR.setSpeaking(false); } }
       if (abortNow) throw new Error('skip');
     }
+    $('qr').style.visibility = 'hidden';
     if (n.media === 'AVATAR') {
       const v = $('avatar'); v.style.display = 'block'; v.src = n.src; await v.play();      // 립싱크 아바타 영상이 앵커 자리를 덮음
+      startEvidence(n.script, n.sources, v, n.duration_sec || 30);
       await waitMedia(v, (n.duration_sec || 30) * 1.5 + 5); v.style.display = 'none';
     } else if (n.media === 'TTS') {
-      const a = $('voice'); a.src = n.audio; await a.play(); await waitMedia(a, (n.duration_sec || 30) * 1.5 + 5);
-    } else { ANCHOR.setSpeaking(true); try { await speak(n.script, n.duration_sec || 25); } finally { ANCHOR.setSpeaking(false); } }
+      const a = $('voice'); a.src = n.audio; await a.play(); startEvidence(n.script, n.sources, a, n.duration_sec || 30);
+      await waitMedia(a, (n.duration_sec || 30) * 1.5 + 5);
+    } else { startEvidence(n.script, n.sources, null, n.duration_sec || 25); ANCHOR.setSpeaking(true); try { await speak(n.script, n.duration_sec || 25); } finally { ANCHOR.setSpeaking(false); } }
   } catch (e) { ok = 'ERROR'; }
+  stopEvidence(); $('qr').style.visibility = 'visible';
   reading = false; hl.classList.remove('urgent');
   await api('POST', `/api/onair/queue/${n.queue_id}/done`, { result: ok }).catch(() => {});
 }
@@ -256,7 +352,11 @@ async function loop() {
     if (n.kind === 'VIDEO') await playVideo(n);
     else if (n.kind === 'SLATE') await playSlate(n);
     else if (n.kind === 'ITEM') await playItem(n);
-    else if (n.kind === 'BOARD') await playBoard(n);
+    else if (n.kind === 'BOARD') {
+      // 읽을 기사가 없을 때: 승인된 시청자 질문이 있으면 먼저 답함 (최종 정리 구간은 제외)
+      let qa = null; if (!(n.segment === 'LIVE' && n.order_no > 6)) qa = await api('GET', '/api/onair/qa/next').catch(() => null);
+      if (qa && qa.kind === 'QA') await playQA(qa); else await playBoard(n);
+    }
     else await sleep(1000);
   }
 }
@@ -277,6 +377,7 @@ listen('/api/onair/stream', {
                           if (d.action === 'skip' || d.action === 'reset') { abortNow = true; for (const el of [$('fullv'), $('voice'), $('avatar')]) el.pause();
                             if ('speechSynthesis' in window) speechSynthesis.cancel(); } }
 }, { keep: true });   // 송출 화면은 숨겨져도 연결 유지 (OBS가 캡처 중일 수 있음)
+setupQR();
 function startScreen() { $('gate').style.display = 'none'; ANCHOR.attachAudio($('voice')); loop(); }
 $('gate').onclick = startScreen;
 // OBS 브라우저 소스는 클릭 없이도 소리 재생이 허용됨 → 자동 시작. 주소에 ?autostart=1 을 붙여도 자동 시작

@@ -1,0 +1,27 @@
+<!doctype html><html lang="ko"><head>{% include '_head.html' %}<title>{{ station }} · 앵커에게 질문하기</title></head>
+<body>
+<main style="max-width:560px">
+  <section class="panel">
+    <h2>🎙️ AI 앵커에게 질문하기</h2>
+    <p class="muted" style="margin-top:0">선거와 개표에 대해 궁금한 점을 보내 주세요. AI가 <b>공식 자료와 출고 기사 안에서만</b> 답을 찾고,
+      데스크가 고른 질문은 방송에서 앵커가 근거와 함께 답합니다. 근거가 없으면 "공식 자료에서 확인되지 않습니다"라고 답합니다.</p>
+    <label>이름 (방송에 나옴, 비워도 됨)</label><input id="nick" maxlength="20" placeholder="시청자">
+    <label>질문 (5~200자)</label><textarea id="q" maxlength="200" rows="4" placeholder="예: 사전투표 장소는 어떻게 찾나요?"></textarea>
+    <div class="row" style="margin-top:12px"><span class="muted" id="cnt">0 / 200</span><span class="sp"></span><button class="primary" id="send">질문 보내기</button></div>
+    <p class="muted" style="font-size:13px">특정 후보를 지지·비방하는 질문, 개인정보가 담긴 질문은 방송되지 않습니다. 본 방송은 모의선거입니다.</p>
+    <div id="done" class="panel" style="display:none;background:var(--panel2)"></div>
+  </section>
+</main>
+<script>
+const q = document.getElementById('q'), nick = document.getElementById('nick');
+q.addEventListener('input', () => cnt.textContent = `${q.value.length} / 200`);
+send.onclick = async () => {
+  if (q.value.trim().length < 5) return toast('질문을 5자 이상 적어 주세요');
+  send.disabled = true;
+  try {
+    const r = await api('POST', '/api/public/questions', { question: q.value.trim(), nickname: nick.value.trim() || '시청자' });
+    done.style.display = 'block'; done.textContent = '✅ ' + r.message; q.value = ''; cnt.textContent = '0 / 200';
+  } catch (e) { toast(e.message); }
+  setTimeout(() => send.disabled = false, 3000);
+};
+</script></body></html>

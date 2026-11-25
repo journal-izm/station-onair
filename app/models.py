@@ -194,3 +194,19 @@ class OnairState(Base):                      # TBL-07-05
     current_cue_id: Mapped[int | None] = mapped_column(ForeignKey("cue_sheet.cue_id"), nullable=True)
     current_queue_id: Mapped[int | None] = mapped_column(ForeignKey("onair_queue.queue_id"), nullable=True)
     started_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
+
+class ViewerQuestion(Base):                  # 설계 외 추가: 시청자 질문 (QR → AI 답변 초안 → 데스크 승인 → 앵커 답변)
+    __tablename__ = "viewer_question"
+    q_id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    nickname: Mapped[str] = mapped_column(String(20), default="시청자")
+    question: Mapped[str] = mapped_column(String(200))
+    answer: Mapped[str | None] = mapped_column(Text, nullable=True)
+    sources: Mapped[list | None] = mapped_column(JSON, nullable=True)        # 근거 카드 [{kind,title,ref,text,highlight}]
+    grounded: Mapped[bool] = mapped_column(Boolean, default=False)          # 근거로 답했는지 (아니면 "공식 자료에서 확인되지 않습니다")
+    ai_model: Mapped[str] = mapped_column(String(30), default="")
+    status: Mapped[str] = mapped_column(String(10), default="NEW")          # NEW / READY / APPROVED / REJECTED / AIRED
+    audio_path: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    audio_sec: Mapped[float | None] = mapped_column(Float, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=now)
+    aired_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)

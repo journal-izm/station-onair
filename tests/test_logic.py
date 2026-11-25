@@ -209,3 +209,29 @@ def test_urgent_priority_first_and_in_press_order():
         {"queue_id": 4, "priority": rules.priority("LEAD_CHANGE", urgent=True), "approved_at": t + timedelta(seconds=5)},
     ]
     assert [i["queue_id"] for i in sorted(items, key=rules.queue_sort_key)] == [4, 2, 1, 3]
+
+
+# ── 근거(RAG) 찾기 · 시청자 질문 ──
+from app.logic import evidence as ev
+from app.config import OFFICIAL_DIR
+
+
+def test_evidence_grounded_question():
+    docs = ev.load_official(OFFICIAL_DIR)
+    found = ev.find_evidence("사전투표소는 어디서 찾나요?", docs)
+    assert found and found[0]["kind"] == "OFFICIAL"
+    assert "사전투표" in found[0]["highlight"]
+
+
+def test_evidence_not_found_for_prediction():
+    docs = ev.load_official(OFFICIAL_DIR)
+    assert ev.find_evidence("누가 이길까요", docs) == []
+    r = ev.template_answer("누가 이길까요", [])
+    assert r["answer"] == ev.NOT_FOUND and r["grounded"] is False
+
+
+def test_match_sentence_needs_numbers_for_nec():
+    src = [{"kind": "NEC", "title": "선관위 개표 집계 #3", "text": "별빛구 개표율 42.5% · 윤별하 51.2%"},
+           {"kind": "OFFICIAL", "title": "개표율", "text": "개표율은 전체 투표지 중 개표가 끝난 비율이다."}]
+    assert ev.match_sentence("별빛구 개표율이 42.5%입니다.", src)[0] == 0
+    assert 0 not in ev.match_sentence("개표율이란 무엇인가요?", src)

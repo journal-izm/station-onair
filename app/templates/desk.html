@@ -17,6 +17,11 @@
       <div class="muted" id="hist" style="margin-top:10px;font-size:13px"></div>
     </section>
   </div>
+  <section class="panel" style="margin-top:18px"><h2>시청자 질문 <span class="muted">(QR로 들어온 질문 · AI 답변 초안 · 근거 확인 후 방송 승인)</span></h2>
+    <div class="row" style="margin-bottom:8px"><select id="qfilter" style="width:auto"><option value="NEW,READY">검토 대기</option><option value="APPROVED,AIRED">승인·방송됨</option><option value="REJECTED">반려함</option></select>
+      <span class="sp"></span><span class="muted" id="qcnt"></span></div>
+    <div id="qlist" class="grid g2"></div>
+  </section>
 </main>
 <script>
 let cur = null;
@@ -47,6 +52,31 @@ app.onclick = () => approve(false); appU.onclick = () => approve(true);
 rej.onclick = async () => { try { await api('POST', `/api/desk/articles/${cur.article_id}/reject`, { comment: comment.value });
   toast('반려했습니다'); comment.value = ''; open_(cur.article_id); } catch (e) { toast(e.message); } };
 filter.onchange = loadList; loadList(); every(loadList, 5000);
-listen('/api/newsroom/stream', { 'article.submitted': () => { toast('새 송고 기사가 도착했습니다'); loadList(); },
+// ── 시청자 질문: AI가 공식 자료·출고 기사 안에서만 답한 초안을 데스크가 확인하고 방송 승인 ──
+const KIND_KO = { OFFICIAL: '공식 자료', ARTICLE: '출고 기사' };
+async function loadQ() {
+  if (document.activeElement && document.activeElement.classList.contains('qa')) return;   // 답을 고치는 중이면 새로 그리지 않음
+  const rows = await api('GET', '/api/desk/questions?status=' + qfilter.value);
+  qcnt.textContent = rows.length + '건';
+  qlist.innerHTML = rows.map(q => `<div class="panel" style="background:var(--panel2)" data-q="${q.q_id}">
+    <div class="muted" style="font-size:13px">#${q.q_id} · ${esc(q.nickname)} · ${q.created_at} · ${q.status}${q.ai_model ? ' · ' + esc(q.ai_model) : ''}</div>
+    <h3 style="margin:6px 0">Q. ${esc(q.question)}</h3>
+    ${q.status === 'NEW' ? '<p class="muted">AI가 근거를 찾는 중…</p>' : `
+    <div style="margin:6px 0"><span class="st ${q.grounded ? 'APPROVED' : 'REJECTED'}">${q.grounded ? '근거 있음' : '근거 없음 → "공식 자료에서 확인되지 않습니다"'}</span></div>
+    <textarea rows="3" class="qa" ${['READY'].includes(q.status) ? '' : 'disabled'}>${esc(q.answer || '')}</textarea>
+    <div style="font-size:13px;margin-top:6px">${(q.sources || []).map((s, i) => `<div style="margin:4px 0">[${i + 1}] <b>${KIND_KO[s.kind] || s.kind}</b> · ${esc(s.title)} <span class="muted">(${esc(s.ref)})</span><br><span style="background:#4a3d00;color:#ffe08a">${esc(s.highlight)}</span></div>`).join('') || '<span class="muted">근거 없음</span>'}</div>
+    ${q.status === 'READY' ? `<div class="row" style="margin-top:10px"><button class="bad qrej">반려</button><span class="sp"></span><button class="ok qok">방송 승인</button></div>` : ''}`}
+  </div>`).join('') || '<p class="muted">없습니다</p>';
+  qlist.querySelectorAll('[data-q]').forEach(card => {
+    const id = card.dataset.q;
+    card.querySelector('.qok')?.addEventListener('click', async () => {
+      try { await api('POST', `/api/desk/questions/${id}/approve`, { answer: card.querySelector('.qa').value }); toast('방송 대기열에 넣었습니다 — 읽을 기사가 없을 때 앵커가 답합니다'); loadQ(); }
+      catch (e) { toast(e.message); } });
+    card.querySelector('.qrej')?.addEventListener('click', async () => {
+      try { await api('POST', `/api/desk/questions/${id}/reject`); toast('반려했습니다'); loadQ(); } catch (e) { toast(e.message); } });
+  });
+}
+qfilter.onchange = loadQ; loadQ(); every(loadQ, 8000);
+listen('/api/newsroom/stream', { 'qa.new': () => { toast('시청자 질문이 들어왔습니다'); loadQ(); }, 'qa.ready': loadQ, 'article.submitted': () => { toast('새 송고 기사가 도착했습니다'); loadList(); },
   'article.approved': loadList, 'tts.failed': d => toast(`⚠ 기사 ${d.article_id} 음성 생성 실패 — 방송에서 건너뜀 (웹 게시는 유지)`, 6000) });
 </script></body></html>

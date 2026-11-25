@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 
 from .. import onair_service
 from ..db import get_db
-from ..models import Article, AvatarVideo, CueSheet, MediaAsset, OnairQueue, Region
+from ..models import Article, AvatarVideo, CueSheet, MediaAsset, OnairQueue, Region, ViewerQuestion
 from ..security import desk_only
 from ..sse import broker
 
@@ -60,6 +60,30 @@ def queue_mode(queue_id: int, body: QueueMode):
         raise HTTPException(404, str(e))
     except ValueError as e:
         raise HTTPException(409, str(e))
+
+
+@router.get("/qa/next", summary="방송할 시청자 질문 (승인된 것 하나, 꺼내면 AIRED)")
+def qa_next(db: Session = Depends(get_db)):
+    from datetime import datetime
+    from .. import config
+    from ..workers.qa_worker import qa_script
+    q = (db.query(ViewerQuestion).filter_by(status="APPROVED").order_by(ViewerQuestion.q_id).first())
+    if not q:
+        return {"kind": "NONE"}
+    if config.OPENAI_API_KEY and not q.audio_path and q.audio_sec is None:
+        return {"kind": "NONE", "waiting": q.q_id}          # 음성을 만드는 중 (실패하면 audio_sec=-1 → 브라우저 음성으로)
+    q.status, q.aired_at = "AIRED", datetime.now()
+    db.commit()
+    return {"kind": "QA", "q_id": q.q_id, "nickname": q.nickname, "question": q.question, "answer": q.answer,
+            "grounded": q.grounded, "sources": q.sources or [], "audio": q.audio_path, "duration_sec": q.audio_sec,
+            "script": qa_script(q)}
+
+
+@router.get("/qa/info", summary="송출 화면 QR에 넣을 시청자 질문 주소")
+def qa_info(request: Request):
+    from .. import config
+    base = config.PUBLIC_BASE_URL or str(request.base_url).rstrip("/")
+    return {"ask_url": base + "/ask"}
 
 
 @router.post("/control", summary="API-07-04 송출 제어")

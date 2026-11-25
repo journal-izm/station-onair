@@ -65,6 +65,9 @@ DEMO_AUTO_APPROVE = _bool(_env("DEMO_AUTO_APPROVE", "false"))   # 시연 모드�
 
 MEDIA_DIR = APP_DIR / "static" / "media"
 TTS_DIR = APP_DIR / "static" / "tts"
+OFFICIAL_DIR = APP_DIR / "rag" / "official_docs"          # 공식 자료 (근거 카드·시청자 질문 답변)
+# 시청자가 휴대폰으로 질문할 주소 (QR). 비우면 송출 화면을 연 주소 기준. 교실에서는 http://<송출 PC IP>:8101 처럼
+PUBLIC_BASE_URL = _env("PUBLIC_BASE_URL", "").rstrip("/")
 AVATAR_DIR = APP_DIR / "static" / "avatar"
 VECTOR_DIR = BASE_DIR / "vectordb"
 

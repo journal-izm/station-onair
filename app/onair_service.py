@@ -76,6 +76,7 @@ def pop_item() -> dict | None:
                # 기사를 쓸 때의 개표 수치 — 송출 화면이 '기사 관련 차트'를 이 숫자로 그림 (기사와 화면 숫자가 같게)
                "event": {**(ev.payload if ev else {}), "seq": ev.seq if ev else None,
                          "detected_at": ev.detected_at.strftime("%H:%M:%S") if ev else None}}
+        out["sources"] = article_sources(db, a, ev, reg.name if reg else q.region_code)   # 화면의 '근거 카드'
         av = db.get(AvatarVideo, q.avatar_id) if q.avatar_id else None
         tts = db.get(TtsAudio, q.tts_id) if q.tts_id else None
         if av and av.status == "READY":
@@ -119,6 +120,29 @@ def next_item() -> dict:
     if n.get("kind") == "END":
         broker.publish("onair", "onair.control", {"action": "end"})
     return n
+
+
+def article_sources(db, a: Article, ev, region_name: str) -> list[dict]:
+    """기사의 근거: ① 선관위 개표 집계(숫자) ② RAG로 찾은 후보 자료. 송출 화면이 문장마다 맞는 카드를 띄움."""
+    from .models import CandidateDoc
+    out = []
+    if ev:
+        p = ev.payload or {}
+        names = {c.candidate_id: c.name for c in db.query(Candidate)}
+        votes, rates = p.get("votes") or {}, p.get("vote_rates") or {}
+        lines = [f"{region_name} 개표율 {p.get('counted_rate')}%"]
+        for cid in sorted(votes, key=lambda k: -float(votes[k])):
+            lines.append(f"{names.get(int(cid), cid)} {rates.get(cid, rates.get(str(cid), ''))}% ({int(votes[cid]):,}표)")
+        if p.get("gap") is not None:
+            lines.append(f"1·2위 격차 {int(p['gap']):,}표")
+        if p.get("remaining") is not None:
+            lines.append(f"남은 표 {int(p['remaining']):,}표")
+        out.append({"kind": "NEC", "title": f"선관위 개표 집계 #{ev.seq}", "ref": f"수신 {ev.detected_at:%H:%M:%S}" if ev.detected_at else "",
+                    "text": " · ".join(lines)})
+    if a.rag_sources:
+        for d in db.query(CandidateDoc).filter(CandidateDoc.doc_id.in_(a.rag_sources)).all():
+            out.append({"kind": "DOC", "title": d.title, "ref": d.source or "후보 자료", "text": d.content})
+    return out
 
 
 # ── 긴급 속보 머리말 ("긴급 속보입니다.") — TTS로 한 번만 만들어 두고 긴급 기사마다 앞에 붙임
